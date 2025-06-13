@@ -141,21 +141,21 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		if (curator == newCurator) revert ErrorsLib.AlreadySet();
 		if (pendingCurator.validAt != 0) revert ErrorsLib.AlreadyPending();
 		pendingCurator.update(newCurator, timelock);
-		// emit
+		emit EventsLib.SubmitCurator(_msgSender());
 	}
 
 	function revokePendingCurator() public onlyCurator {
 		if (pendingCurator.validAt == 0) revert ErrorsLib.NoPendingValue();
+		emit EventsLib.RevokePendingCurator(_msgSender());
 		delete pendingCurator;
-		// emit
 	}
 
 	// @dev: only new curator can accept the new role after timelock
 	function acceptCurator() public afterTimelock(pendingCurator.validAt) {
 		if (pendingCurator.value != _msgSender()) revert ErrorsLib.NotCuratorRole(_msgSender());
 		curator = pendingCurator.value;
+		emit EventsLib.SetCurator(_msgSender(), curator);
 		delete pendingCurator;
-		// emit
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -163,20 +163,29 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	function setGuardian(address newGuardian) public onlyGuardian {
 		if (guardian == newGuardian) revert ErrorsLib.AlreadySet();
 		if (pendingGuardian.validAt != 0) revert ErrorsLib.AlreadyPending();
-		pendingGuardian.update(newGuardian, timelock);
-		// emit
+
+		if (guardian == address(0)) {
+			_setGuardian(newGuardian);
+		} else {
+			pendingGuardian.update(newGuardian, timelock);
+			emit EventsLib.SubmitGuardian(newGuardian);
+		}
 	}
 
 	function revokePendingGuardian() public onlyGuardian {
 		if (pendingGuardian.validAt == 0) revert ErrorsLib.NoPendingValue();
+		emit EventsLib.RevokePendingGuardian(_msgSender());
 		delete pendingGuardian;
-		// emit
 	}
 
 	function acceptGuardian() public afterTimelock(pendingGuardian.validAt) {
-		guardian = pendingGuardian.value;
+		_setGuardian(pendingGuardian.value);
+	}
+
+	function _setGuardian(address newGuardian) internal {
+		guardian = newGuardian;
+		emit EventsLib.SetGuardian(_msgSender(), guardian);
 		delete pendingGuardian;
-		// emit
 	}
 
 	// ---------------------------------------------------------------------------------------
