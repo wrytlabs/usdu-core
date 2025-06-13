@@ -31,4 +31,15 @@ library EventsLib {
 	event SetGuardian(address indexed caller, address indexed guardian);
 
 	// ---------------------------------------------------------------------------------------
+
+	/// @notice Emitted when a pending `newTimelock` is submitted.
+	event SubmitTimelock(uint256 newTimelock);
+
+	/// @notice Emitted when a `pendingTimelock` is revoked.
+	event RevokePendingTimelock(address indexed caller);
+
+	/// @notice Emitted when `timelock` is set to `newTimelock`.
+	event SetTimelock(address indexed caller, uint256 newTimelock);
+
+	// ---------------------------------------------------------------------------------------
 }

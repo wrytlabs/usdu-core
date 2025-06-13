@@ -9,6 +9,7 @@ import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ERC1363} from '@openzeppelin/contracts/token/ERC20/extensions/ERC1363.sol';
 
+import {ConstantsLib} from '../libraries/ConstantsLib.sol';
 import {ErrorsLib} from '../libraries/ErrorsLib.sol';
 import {EventsLib} from '../libraries/EventsLib.sol';
 import {PendingLib, PendingUint192, PendingAddress} from '../libraries/PendingLib.sol';
@@ -16,6 +17,17 @@ import {PendingLib, PendingUint192, PendingAddress} from '../libraries/PendingLi
 /*
 - add PendingLib for generic timelocks
 - add timelock to relevant functions
+- make comments according to NatSpec tags using /// three
+
+@dev — Developer notes
+
+@param — Describe function parameters
+
+@return — Describe return values
+
+@notice — End-user-facing comment (e.g., on UIs)
+
+@inheritdoc — Inherit docs from parent functions
 */
 
 contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
@@ -137,21 +149,21 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 
-	function setCurator(address newCurator) public onlyCurator {
+	function setCurator(address newCurator) external onlyCurator {
 		if (curator == newCurator) revert ErrorsLib.AlreadySet();
 		if (pendingCurator.validAt != 0) revert ErrorsLib.AlreadyPending();
 		pendingCurator.update(newCurator, timelock);
 		emit EventsLib.SubmitCurator(_msgSender());
 	}
 
-	function revokePendingCurator() public onlyCurator {
+	function revokePendingCurator() external onlyCurator {
 		if (pendingCurator.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingCurator(_msgSender());
 		delete pendingCurator;
 	}
 
 	// @dev: only new curator can accept the new role after timelock
-	function acceptCurator() public afterTimelock(pendingCurator.validAt) {
+	function acceptCurator() external afterTimelock(pendingCurator.validAt) {
 		if (pendingCurator.value != _msgSender()) revert ErrorsLib.NotCuratorRole(_msgSender());
 		curator = pendingCurator.value;
 		emit EventsLib.SetCurator(_msgSender(), curator);
@@ -160,7 +172,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 
-	function setGuardian(address newGuardian) public onlyGuardian {
+	function setGuardian(address newGuardian) external onlyGuardian {
 		if (guardian == newGuardian) revert ErrorsLib.AlreadySet();
 		if (pendingGuardian.validAt != 0) revert ErrorsLib.AlreadyPending();
 
@@ -172,13 +184,13 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
-	function revokePendingGuardian() public onlyGuardian {
+	function revokePendingGuardian() external onlyGuardian {
 		if (pendingGuardian.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingGuardian(_msgSender());
 		delete pendingGuardian;
 	}
 
-	function acceptGuardian() public afterTimelock(pendingGuardian.validAt) {
+	function acceptGuardian() external afterTimelock(pendingGuardian.validAt) {
 		_setGuardian(pendingGuardian.value);
 	}
 
@@ -190,5 +202,40 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 
-	function setTimelock(uint256 newTimelock) public onlyCurator {}
+	function setTimelock(uint256 newTimelock) public onlyCurator {
+		if (timelock == newTimelock) revert ErrorsLib.AlreadySet();
+		if (pendingTimelock.validAt != 0) revert ErrorsLib.AlreadyPending();
+		_checkTimelockBounds(newTimelock);
+
+		if (newTimelock > timelock) {
+			_setTimelock(newTimelock);
+		} else {
+			// Safe "unchecked" cast because newTimelock <= MAX_TIMELOCK.
+			pendingTimelock.update(uint184(newTimelock), timelock);
+			emit EventsLib.SubmitTimelock(newTimelock);
+		}
+	}
+
+	function revokePendingTimelock() external onlyGuardian {
+		if (pendingTimelock.validAt == 0) revert ErrorsLib.NoPendingValue();
+		emit EventsLib.RevokePendingTimelock(_msgSender());
+		delete pendingTimelock;
+	}
+
+	function acceptTimelock() external afterTimelock(pendingTimelock.validAt) {
+		_setTimelock(pendingTimelock.value);
+	}
+
+	/// @dev Reverts if `newTimelock` is not within the bounds.
+	function _checkTimelockBounds(uint256 newTimelock) internal pure {
+		if (newTimelock > ConstantsLib.MAX_TIMELOCK) revert ErrorsLib.AboveMaxTimelock();
+		if (newTimelock < ConstantsLib.MIN_TIMELOCK) revert ErrorsLib.BelowMinTimelock();
+	}
+
+	/// @dev Sets `timelock` to `newTimelock`.
+	function _setTimelock(uint256 newTimelock) internal {
+		timelock = newTimelock;
+		emit EventsLib.SetTimelock(_msgSender(), newTimelock);
+		delete pendingTimelock;
+	}
 }
