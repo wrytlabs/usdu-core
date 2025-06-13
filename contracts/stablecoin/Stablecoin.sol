@@ -13,6 +13,7 @@ import {ConstantsLib} from '../libraries/ConstantsLib.sol';
 import {ErrorsLib} from '../libraries/ErrorsLib.sol';
 import {EventsLib} from '../libraries/EventsLib.sol';
 import {PendingLib, PendingUint192, PendingAddress} from '../libraries/PendingLib.sol';
+import {ModuleAccessLib, ModuleAccess} from '../libraries/ModulesLib.sol';
 
 /*
 - add PendingLib for generic timelocks
@@ -35,6 +36,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	using SafeERC20 for ERC20;
 	using PendingLib for PendingUint192;
 	using PendingLib for PendingAddress;
+	using ModuleAccessLib for ModuleAccess;
 
 	string private _customName;
 	string private _customSymbol;
@@ -48,13 +50,9 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	uint256 public timelock;
 	PendingUint192 public pendingTimelock;
 
+	mapping(address module => ModuleAccess) public modules;
+	mapping(address module => ModuleAccess) public pendingModule;
 	mapping(address account => bool) public freezed;
-
-	// ---------------------------------------------------------------------------------------
-
-	event asdf();
-
-	// ---------------------------------------------------------------------------------------
 
 	// ---------------------------------------------------------------------------------------
 
@@ -77,6 +75,19 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	modifier afterTimelock(uint256 validAt) {
 		if (validAt == 0) revert ErrorsLib.NoPendingValue();
 		if (block.timestamp < validAt) revert ErrorsLib.TimelockNotElapsed();
+		_;
+	}
+
+	modifier onlyModule() {
+		if (modules[_msgSender()].module == address(0)) revert ErrorsLib.NotModuleRole(_msgSender());
+		_;
+	}
+
+	modifier validModule() {
+		ModuleAccess storage mod = modules[_msgSender()];
+		if (mod.validAt > block.timestamp)
+			revert ErrorsLib.ModuleIsValidAt(mod.validAt, uint64(mod.validAt - block.timestamp));
+		if (mod.expiredAt <= block.timestamp) revert ErrorsLib.ModuleIsExpiredAt(mod.expiredAt);
 		_;
 	}
 
@@ -112,8 +123,14 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	// allowance and update modifications
 
 	function allowance(address owner, address spender) public view virtual override(ERC20, IERC20) returns (uint256) {
-		// if (checkModule(_msgSender()) == true) return type(uint256).max;
+		if (_moduleCheckAllowance(_msgSender()) == true) return type(uint256).max;
 		return super.allowance(owner, spender);
+	}
+
+	function _moduleCheckAllowance(address module) internal view returns (bool) {
+		ModuleAccess memory mod = modules[module];
+		if (mod.validAt > block.timestamp || mod.expiredAt <= block.timestamp) return false;
+		return true;
 	}
 
 	function _update(address from, address to, uint256 value) internal virtual override {
@@ -125,8 +142,27 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	// allow minting modules to mint tokens
 	// TODO: add restrictions
 
-	function mintModule(address to, uint256 value) public {
+	function mintModule(address to, uint256 value) external validModule {
+		modules[_msgSender()].mint(value); // @dev: this will take care of the minting limits and would revert
 		_mint(to, value);
+	}
+
+	function burnModule(uint256 value) external onlyModule {
+		modules[_msgSender()].burn(value); // @dev: this will take care of the burning limits and would revert
+		_burn(_msgSender(), value);
+	}
+
+	function burnFromModule(address account, uint256 value) external onlyModule {
+		modules[account].burn(value); // @dev: this will take care of the burning limits and would revert
+		_burn(account, value);
+	}
+
+	function burnFrom(address account, uint256 _amount) external onlyModule {
+		_burn(account, _amount);
+	}
+
+	function burn(uint256 _amount) external {
+		_burn(_msgSender(), _amount);
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -172,7 +208,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 
-	function setGuardian(address newGuardian) external onlyGuardian {
+	function setGuardian(address newGuardian) external onlyCurator {
 		if (guardian == newGuardian) revert ErrorsLib.AlreadySet();
 		if (pendingGuardian.validAt != 0) revert ErrorsLib.AlreadyPending();
 
@@ -184,7 +220,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
-	function revokePendingGuardian() external onlyGuardian {
+	function revokePendingGuardian() external onlyCuratorOrGuardian {
 		if (pendingGuardian.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingGuardian(_msgSender());
 		delete pendingGuardian;
@@ -216,7 +252,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
-	function revokePendingTimelock() external onlyGuardian {
+	function revokePendingTimelock() external onlyCuratorOrGuardian {
 		if (pendingTimelock.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingTimelock(_msgSender());
 		delete pendingTimelock;
@@ -238,4 +274,12 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		emit EventsLib.SetTimelock(_msgSender(), newTimelock);
 		delete pendingTimelock;
 	}
+
+	// ---------------------------------------------------------------------------------------
+
+	function setModule(address module) external onlyCurator {}
+
+	function revokePendingModule(address module) external onlyCuratorOrGuardian {}
+
+	function acceptModule(address module) external afterTimelock(pendingModule[module].validAt) {}
 }

@@ -11,11 +11,18 @@ library ErrorsLib {
 	/// @notice Thrown when the caller doesn't have the curator nor the guardian role.
 	error NotCuratorNorGuardianRole(address account);
 
+	// ---------------------------------------------------------------------------------------
+
+	/// @notice Thrown when there's no pending value to set.
+	error NoPendingValue();
+
 	/// @notice Thrown when the value is already set.
 	error AlreadySet();
 
 	/// @notice Thrown when a value is already pending.
 	error AlreadyPending();
+
+	// ---------------------------------------------------------------------------------------
 
 	/// @notice Thrown when the submitted timelock is above the max timelock.
 	error AboveMaxTimelock();
@@ -26,8 +33,19 @@ library ErrorsLib {
 	/// @notice Thrown when the timelock is not elapsed.
 	error TimelockNotElapsed();
 
-	/// @notice Thrown when there's no pending value to set.
-	error NoPendingValue();
+	// ---------------------------------------------------------------------------------------
+
+	error NotModuleRole(address account);
+
+	error ModuleIsValidAt(uint64 validAt, uint64 delayRemaining);
+
+	error ModuleIsExpiredAt(uint64 expiredAt);
+
+	error ModuleMintLimitExceeded(uint256 minted, uint256 limit);
+
+	error ModuleBurnLimitExceeded(uint256 minted, uint256 toBurn);
+
+	// ---------------------------------------------------------------------------------------
 
 	error AccountFreezed(address account);
 }
