@@ -42,4 +42,15 @@ library EventsLib {
 	event SetTimelock(address indexed caller, uint256 newTimelock);
 
 	// ---------------------------------------------------------------------------------------
+
+	/// @notice Emitted when a new `newModule` is submitted.
+	event SubmitModule(address indexed newModule, uint256 validAt, uint256 expiredAt, string message);
+
+	/// @notice Emitted when a `pendingModule` is revoked.
+	event RevokePendingModule(address indexed caller, address indexed module);
+
+	/// @notice Emitted when `Module` is set to `newModule`.
+	event SetModule(address indexed caller, address indexed newModule);
+
+	// ---------------------------------------------------------------------------------------
 }

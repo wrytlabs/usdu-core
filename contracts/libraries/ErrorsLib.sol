@@ -37,13 +37,7 @@ library ErrorsLib {
 
 	error NotModuleRole(address account);
 
-	error ModuleIsValidAt(uint64 validAt, uint64 delayRemaining);
-
-	error ModuleIsExpiredAt(uint64 expiredAt);
-
-	error ModuleMintLimitExceeded(uint256 minted, uint256 limit);
-
-	error ModuleBurnLimitExceeded(uint256 minted, uint256 toBurn);
+	error ModuleNotValid(address account);
 
 	// ---------------------------------------------------------------------------------------
 

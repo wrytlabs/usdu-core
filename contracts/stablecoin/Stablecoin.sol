@@ -13,7 +13,6 @@ import {ConstantsLib} from '../libraries/ConstantsLib.sol';
 import {ErrorsLib} from '../libraries/ErrorsLib.sol';
 import {EventsLib} from '../libraries/EventsLib.sol';
 import {PendingLib, PendingUint192, PendingAddress} from '../libraries/PendingLib.sol';
-import {ModuleAccessLib, ModuleAccess} from '../libraries/ModulesLib.sol';
 
 /*
 - add PendingLib for generic timelocks
@@ -36,10 +35,9 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	using SafeERC20 for ERC20;
 	using PendingLib for PendingUint192;
 	using PendingLib for PendingAddress;
-	using ModuleAccessLib for ModuleAccess;
 
 	string private _customName;
-	string private _customSymbol;
+	string private _customSymbol; // FIXME: maybe remove this. this could cause issues
 
 	address public curator;
 	PendingAddress public pendingCurator;
@@ -50,9 +48,11 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	uint256 public timelock;
 	PendingUint192 public pendingTimelock;
 
-	mapping(address module => ModuleAccess) public modules;
-	mapping(address module => ModuleAccess) public pendingModule;
+	mapping(address module => uint256) public modules;
+	mapping(address module => PendingUint192) public pendingModules;
+
 	mapping(address account => bool) public freezed;
+	// TODO: pending unfreeze
 
 	// ---------------------------------------------------------------------------------------
 
@@ -79,15 +79,12 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	}
 
 	modifier onlyModule() {
-		if (modules[_msgSender()].module == address(0)) revert ErrorsLib.NotModuleRole(_msgSender());
+		if (modules[_msgSender()] == 0) revert ErrorsLib.NotModuleRole(_msgSender());
 		_;
 	}
 
 	modifier validModule() {
-		ModuleAccess storage mod = modules[_msgSender()];
-		if (mod.validAt > block.timestamp)
-			revert ErrorsLib.ModuleIsValidAt(mod.validAt, uint64(mod.validAt - block.timestamp));
-		if (mod.expiredAt <= block.timestamp) revert ErrorsLib.ModuleIsExpiredAt(mod.expiredAt);
+		if (modules[_msgSender()] <= block.timestamp) revert ErrorsLib.ModuleNotValid(_msgSender());
 		_;
 	}
 
@@ -123,14 +120,8 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	// allowance and update modifications
 
 	function allowance(address owner, address spender) public view virtual override(ERC20, IERC20) returns (uint256) {
-		if (_moduleCheckAllowance(_msgSender()) == true) return type(uint256).max;
+		if (modules[_msgSender()] > block.timestamp) return type(uint256).max;
 		return super.allowance(owner, spender);
-	}
-
-	function _moduleCheckAllowance(address module) internal view returns (bool) {
-		ModuleAccess memory mod = modules[module];
-		if (mod.validAt > block.timestamp || mod.expiredAt <= block.timestamp) return false;
-		return true;
 	}
 
 	function _update(address from, address to, uint256 value) internal virtual override {
@@ -140,25 +131,13 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 	// allow minting modules to mint tokens
-	// TODO: add restrictions
 
 	function mintModule(address to, uint256 value) external validModule {
-		modules[_msgSender()].mint(value); // @dev: this will take care of the minting limits and would revert
 		_mint(to, value);
 	}
 
-	function burnModule(uint256 value) external onlyModule {
-		modules[_msgSender()].burn(value); // @dev: this will take care of the burning limits and would revert
-		_burn(_msgSender(), value);
-	}
-
-	function burnFromModule(address account, uint256 value) external onlyModule {
-		modules[account].burn(value); // @dev: this will take care of the burning limits and would revert
-		_burn(account, value);
-	}
-
-	function burnFrom(address account, uint256 _amount) external onlyModule {
-		_burn(account, _amount);
+	function burnModule(address from, uint256 _amount) external onlyModule {
+		_burn(from, _amount);
 	}
 
 	function burn(uint256 _amount) external {
@@ -176,10 +155,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		bytes32 r,
 		bytes32 s
 	) external {
-		// Approve spender (msg.sender) via permit
 		permit(owner, _msgSender(), value, deadline, v, r, s);
-
-		// Transfer tokens from owner to recipient
 		transferFrom(owner, to, value);
 	}
 
@@ -198,7 +174,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		delete pendingCurator;
 	}
 
-	// @dev: only new curator can accept the new role after timelock
+	/// @dev Only new curator can accept the new role after timelock
 	function acceptCurator() external afterTimelock(pendingCurator.validAt) {
 		if (pendingCurator.value != _msgSender()) revert ErrorsLib.NotCuratorRole(_msgSender());
 		curator = pendingCurator.value;
@@ -277,9 +253,35 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 
-	function setModule(address module) external onlyCurator {}
+	function setModule(address module, uint256 expiredAt, string calldata message) external onlyCurator {
+		if (modules[module] == expiredAt) revert ErrorsLib.AlreadySet();
+		if (pendingModules[module].validAt != 0) revert ErrorsLib.AlreadyPending();
 
-	function revokePendingModule(address module) external onlyCuratorOrGuardian {}
+		if (totalSupply() == 0) {
+			_setModule(module, expiredAt);
+		} else {
+			pendingModules[module].update(uint184(expiredAt), timelock);
+			emit EventsLib.SubmitModule(module, block.timestamp + timelock, expiredAt, message);
+		}
+	}
 
-	function acceptModule(address module) external afterTimelock(pendingModule[module].validAt) {}
+	function revokePendingModule(address module) external onlyCuratorOrGuardian {
+		if (pendingModules[module].validAt == 0) revert ErrorsLib.NoPendingValue();
+		emit EventsLib.RevokePendingModule(_msgSender(), module);
+		delete pendingModules[module];
+	}
+
+	function acceptModule(address module) external afterTimelock(pendingModules[module].validAt) {
+		_setModule(module, pendingModules[module].value);
+	}
+
+	function _setModule(address module, uint256 expiredAt) internal {
+		modules[module] = expiredAt;
+		emit EventsLib.SetModule(_msgSender(), module);
+		delete pendingModules[module];
+	}
+
+	// ---------------------------------------------------------------------------------------
+
+	// freeze
 }
