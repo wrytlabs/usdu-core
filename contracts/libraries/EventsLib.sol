@@ -2,14 +2,6 @@
 pragma solidity ^0.8.20;
 
 library EventsLib {
-	/// @notice Emitted when the name of the vault is set.
-	event SetName(string name);
-
-	/// @notice Emitted when the symbol of the vault is set.
-	event SetSymbol(string symbol);
-
-	// ---------------------------------------------------------------------------------------
-
 	/// @notice Emitted when a pending `newCurator` is submitted.
 	event SubmitCurator(address indexed newCurator);
 

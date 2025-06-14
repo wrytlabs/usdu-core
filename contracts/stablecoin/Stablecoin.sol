@@ -36,9 +36,6 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	using PendingLib for PendingUint192;
 	using PendingLib for PendingAddress;
 
-	string private _customName;
-	string private _customSymbol; // FIXME: maybe remove this. this could cause issues
-
 	address public curator;
 	PendingAddress public pendingCurator;
 
@@ -91,29 +88,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	// ---------------------------------------------------------------------------------------
 
 	constructor(string memory _name, string memory _symbol, address _curator) ERC20(_name, _symbol) ERC20Permit(_name) {
-		_customName = _name;
-		_customSymbol = _symbol;
-
 		curator = _curator;
-	}
-
-	// ---------------------------------------------------------------------------------------
-	// Name and Symbol modifications
-
-	function setName(string calldata newName) external onlyCurator {
-		_customName = newName;
-	}
-
-	function name() public view override(ERC20) returns (string memory) {
-		return _customName;
-	}
-
-	function setSymbol(string calldata newSymbol) external onlyCurator {
-		_customSymbol = newSymbol;
-	}
-
-	function symbol() public view override(ERC20) returns (string memory) {
-		return _customSymbol;
 	}
 
 	// ---------------------------------------------------------------------------------------

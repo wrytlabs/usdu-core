@@ -42,4 +42,6 @@ library ErrorsLib {
 	// ---------------------------------------------------------------------------------------
 
 	error AccountFreezed(address account);
+
+	error AccountUnfreezed(address account);
 }
