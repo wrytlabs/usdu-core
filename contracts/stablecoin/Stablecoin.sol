@@ -8,6 +8,7 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ERC1363} from '@openzeppelin/contracts/token/ERC20/extensions/ERC1363.sol';
+import {Multicall} from '@openzeppelin/contracts/utils/Multicall.sol'; // TODO: is multicall needed?
 
 import {ConstantsLib} from '../libraries/ConstantsLib.sol';
 import {ErrorsLib} from '../libraries/ErrorsLib.sol';
