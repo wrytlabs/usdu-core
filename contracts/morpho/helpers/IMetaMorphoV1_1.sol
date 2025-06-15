@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMorpho, Id, MarketParams} from '../../lib/morpho-blue/src/interfaces/IMorpho.sol';
-import {IERC4626} from '../../lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
-import {IERC20Permit} from '../../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol';
+import {IMorpho, Id, MarketParams} from './IMorpho.sol';
+import {IERC4626} from '@openzeppelin/contracts/interfaces/IERC4626.sol';
+import {IERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol';
 
-import {MarketConfig, PendingUint192, PendingAddress} from '../libraries/PendingLib.sol';
+import {MarketConfig, PendingUint192, PendingAddress} from './PendingLib.sol';
 
 struct MarketAllocation {
 	/// @notice The market to allocate.

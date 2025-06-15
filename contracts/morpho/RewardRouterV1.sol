@@ -7,15 +7,22 @@ import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
-/// @title RewardsV1 - Non-custodial Router
+/// @title RewardRouterV1 - Non-custodial Router
 /// @author @samclassix <samclassix@proton.me>
-/// @notice Your contract acts purely as a non-custodial router, helping connect on-chain deposits with the off-chain reward program.
-contract RewardsV1 is Ownable {
+/// @notice This contract acts purely as a non-custodial router, helping connect on-chain deposits with the off-chain reward program.
+contract RewardRouterV1 is Ownable {
 	using Math for uint256;
 	using SafeERC20 for IERC20;
 
 	// UniversalRewardsDistributor
 	address immutable urd;
+
+	/*
+        Generic and flexible code
+        - array or mapping for address distributions
+        - array with relative fees
+        - array with executions?
+    */
 
 	// events
 	event Rewards(address indexed sender, address indexed token, uint256 amount);

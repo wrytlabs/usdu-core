@@ -9,11 +9,13 @@ import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ERC1363} from '@openzeppelin/contracts/token/ERC20/extensions/ERC1363.sol';
 
+import {IMetaMorphoV1_1} from './helpers/IMetaMorphoV1_1.sol';
+
 import {Stablecoin} from '../stablecoin/Stablecoin.sol';
 
-contract MorphoV1 {
-	// Vault immutable vault;
-	// Vault immutable staked;
+contract MorphoAdapterV1 {
+	// IMetaMorphoV1_1 immutable vault;
+	// IMetaMorphoV1_1 immutable staked;
 
 	// ---------------------------------------------------------------------------------------
 
@@ -47,7 +49,7 @@ contract MorphoV1 {
         - amount to withdraw
         - amount to burn
         - adjust accounting for vault
-        - deposit profits to inventive programm
+        - deposit profits to inventive programm e.g. RewardDistributionV1
         - emit event
     */
 
