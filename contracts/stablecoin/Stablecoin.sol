@@ -75,6 +75,17 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	}
 
 	// ---------------------------------------------------------------------------------------
+
+	// TODO: IStablecoin
+	function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+		return
+			interfaceId == type(IERC20).interfaceId ||
+			interfaceId == type(ERC20Permit).interfaceId ||
+			// interfaceId == type(IStablecoin).interfaceId ||
+			super.supportsInterface(interfaceId);
+	}
+
+	// ---------------------------------------------------------------------------------------
 	// modifier functions with public visibility
 
 	function checkCurator(address account) public view returns (bool) {

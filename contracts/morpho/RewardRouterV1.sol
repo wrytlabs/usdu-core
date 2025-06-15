@@ -45,3 +45,27 @@ contract RewardRouterV1 is Ownable {
 		emit Rewards(msg.sender, token, amount);
 	}
 }
+
+// addRewardProgram
+/*
+        - curator
+        - Vault(deposit) | Market (supply, borrow, supplyCollateral)
+        - Reward token
+        - Reward amount
+        - Split units
+    */
+
+// addRewardContract
+/*
+        - curator
+        - Reward token
+        - Reward amount
+        - Split units
+    */
+
+// activateRewardProgram
+/*
+        - curator or guardian
+        - data typed signature
+        - 
+    */

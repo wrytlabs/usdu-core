@@ -3,96 +3,118 @@ pragma solidity ^0.8.20;
 
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 
-import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol';
-import {ERC1363} from '@openzeppelin/contracts/token/ERC20/extensions/ERC1363.sol';
-
-import {IMetaMorphoV1_1} from './helpers/IMetaMorphoV1_1.sol';
 
 import {Stablecoin} from '../stablecoin/Stablecoin.sol';
 
-contract MorphoAdapterV1 {
-	// IMetaMorphoV1_1 immutable vault;
-	// IMetaMorphoV1_1 immutable staked;
+import {IMetaMorphoV1_1} from './helpers/IMetaMorphoV1_1.sol';
+
+// import {RewardRouterV1} from './RewardRouterV1.sol';
+
+contract MorphoAdapterV1 is Context {
+	using Math for uint256;
+	using SafeERC20 for Stablecoin;
+	using SafeERC20 for IMetaMorphoV1_1;
+
+	Stablecoin immutable stable;
+	IMetaMorphoV1_1 immutable core;
+	IMetaMorphoV1_1 immutable staked;
+
+	uint256 public totalMinted;
+	uint256 public totalSharesCore;
+	uint256 public totalSharesStaked;
+
+	uint256 public totalRevenue;
+	uint256 public ratioRevenue = 1 ether;
+
+	address[] receivers;
+	uint256[] weights;
 
 	// ---------------------------------------------------------------------------------------
 
-	constructor() // Stablecoin _stable
-	// ERC20 _coin
-	{
-		// stable = _stable;
-		// coin = _coin;
+	error ForwardCallFailed(address forwardedTo);
+
+	// ---------------------------------------------------------------------------------------
+
+	constructor(Stablecoin _stable, IMetaMorphoV1_1 _core, IMetaMorphoV1_1 _staked) {
+		stable = _stable;
+		core = _core;
+		staked = _staked;
 	}
 
-	// setDepositSplits(address contract, calldata)
-	/*
-        - staked vault split e.g. 80%
-        - guardian deposit split e.g. 20%
-    */
+	// ---------------------------------------------------------------------------------------
 
-	// increase(uint256 amount)
-	/*
-        - amount to mint
-        - amount to deposit in vault
-        - adjust accounting for vault
-        - deposit into staked
-        - adjust accounting staked
-        - emit event
-    */
+	// TODO: needs a guardian step before applying ???
 
-	// decrease(uint256 amount)
-	/*
-        - withdraw from staked
-        - adjust accounting for staked
-        - amount to withdraw
-        - amount to burn
-        - adjust accounting for vault
-        - deposit profits to inventive programm e.g. RewardDistributionV1
-        - emit event
-    */
+	function forwardToCore(bytes calldata data) external returns (bytes memory) {
+		stable.verifyCurator(_msgSender());
+		(bool success, bytes memory result) = address(core).call(data);
+		if (!success) revert ForwardCallFailed(address(core));
+		return result;
+	}
 
-	// decrease(uint256 shares) - not leaving dust behind
-	/*
-        - amount to withdraw
-        - amount to burn
-        - adjust accounting
-        - deposit profits to inventive programm
-        - emit event
-    */
+	function forwardToStaked(bytes calldata data) external returns (bytes memory) {
+		stable.verifyCurator(_msgSender());
+		(bool success, bytes memory result) = address(staked).call(data);
+		if (!success) revert ForwardCallFailed(address(staked));
+		return result;
+	}
 
-	// addRewardProgram
-	/*
-        - curator
-        - Vault(deposit) | Market (supply, borrow, supplyCollateral)
-        - Reward token
-        - Reward amount
-        - Split units
-    */
+	// ---------------------------------------------------------------------------------------
 
-	// addRewardContract
-	/*
-        - curator
-        - Reward token
-        - Reward amount
-        - Split units
-    */
+	// TODO: needs a guardian step before applying
 
-	// activateRewardProgram
-	/*
-        - curator or guardian
-        - data typed signature
-        - 
-    */
+	function setDistribution(address[] calldata _receivers, uint256[] calldata _weights) external {
+		stable.verifyCurator(_msgSender());
+		receivers = _receivers;
+		weights = _weights;
+	}
 
-	// EIP721 DatTyped Siganture
+	// ---------------------------------------------------------------------------------------
 
-	// Accounting from Yield Token
+	function deposit(uint256 amount) external {
+		stable.verifyCurator(_msgSender());
 
-	//
+		// mint stables
+		stable.mintModule(address(this), amount);
+		totalMinted += amount;
 
-	// Program: [Vault, ...]
-	// Split: [1000 (aka 100%), ...]
-	// Total: 1000
+		// deposit into core vault
+		stable.forceApprove(address(core), amount);
+		uint256 sharesCore = core.deposit(amount, address(this));
+		totalSharesCore += sharesCore;
+
+		// deposit into staked vault
+		core.forceApprove(address(staked), sharesCore);
+		uint256 sharesStaked = staked.deposit(sharesCore, address(this));
+		totalSharesStaked += sharesStaked;
+
+		// emit Deposit(amount, sharesCore, sharesStaked)
+	}
+
+	function redeem(uint256 sharesStaked) external {
+		stable.verifyCurator(_msgSender());
+
+		// withdraw from staked vault
+		staked.forceApprove(address(staked), sharesStaked);
+		uint256 sharesCore = staked.redeem(sharesStaked, address(this), address(this));
+		totalSharesStaked -= sharesStaked;
+
+		// withdraw from core vault
+		core.forceApprove(address(core), sharesCore);
+		uint256 amount = core.redeem(sharesCore, address(this), address(this));
+		totalSharesCore -= sharesCore;
+
+		// calc revenue
+		uint256 revenue = 1;
+
+		// burn
+		stable.burnModule(address(this), amount - revenue);
+
+		// distribute
+
+		// emit
+	}
 }
