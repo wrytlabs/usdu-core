@@ -8,28 +8,11 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ERC1363} from '@openzeppelin/contracts/token/ERC20/extensions/ERC1363.sol';
-import {Multicall} from '@openzeppelin/contracts/utils/Multicall.sol'; // TODO: is multicall needed?
 
 import {ConstantsLib} from '../libraries/ConstantsLib.sol';
 import {ErrorsLib} from '../libraries/ErrorsLib.sol';
 import {EventsLib} from '../libraries/EventsLib.sol';
 import {PendingLib, PendingUint192, PendingAddress} from '../libraries/PendingLib.sol';
-
-/*
-- add PendingLib for generic timelocks
-- add timelock to relevant functions
-- make comments according to NatSpec tags using /// three
-
-@dev — Developer notes
-
-@param — Describe function parameters
-
-@return — Describe return values
-
-@notice — End-user-facing comment (e.g., on UIs)
-
-@inheritdoc — Inherit docs from parent functions
-*/
 
 contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	using Math for uint256;
@@ -55,18 +38,27 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	// ---------------------------------------------------------------------------------------
 
 	modifier onlyCurator() {
-		if (curator != _msgSender()) revert ErrorsLib.NotCuratorRole(_msgSender());
+		verifyCurator(_msgSender());
 		_;
 	}
 
 	modifier onlyGuardian() {
-		if (guardian != _msgSender()) revert ErrorsLib.NotGuardianRole(_msgSender());
+		verifyGuardian(_msgSender());
 		_;
 	}
 
 	modifier onlyCuratorOrGuardian() {
-		address sender = _msgSender();
-		if (sender != curator || sender != guardian) revert ErrorsLib.NotCuratorNorGuardianRole(sender);
+		verifyCuratorOrGuardian(_msgSender());
+		_;
+	}
+
+	modifier onlyModule() {
+		verifyModule(_msgSender());
+		_;
+	}
+
+	modifier validModule() {
+		verifyValidModule(_msgSender());
 		_;
 	}
 
@@ -76,20 +68,55 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		_;
 	}
 
-	modifier onlyModule() {
-		if (modules[_msgSender()] == 0) revert ErrorsLib.NotModuleRole(_msgSender());
-		_;
-	}
-
-	modifier validModule() {
-		if (modules[_msgSender()] <= block.timestamp) revert ErrorsLib.ModuleNotValid(_msgSender());
-		_;
-	}
-
 	// ---------------------------------------------------------------------------------------
 
 	constructor(string memory _name, string memory _symbol, address _curator) ERC20(_name, _symbol) ERC20Permit(_name) {
 		curator = _curator;
+	}
+
+	// ---------------------------------------------------------------------------------------
+	// modifier functions with public visibility
+
+	function checkCurator(address account) public view returns (bool) {
+		return account == curator;
+	}
+
+	function checkGuardian(address account) public view returns (bool) {
+		return account == guardian;
+	}
+
+	function checkCuratorOrGuardian(address account) public view returns (bool) {
+		return (account == curator || account == guardian);
+	}
+
+	function checkModule(address account) public view returns (bool) {
+		return modules[account] > 0;
+	}
+
+	function checkValidModule(address account) public view returns (bool) {
+		return modules[account] > block.timestamp;
+	}
+
+	// ---------------------------------------------------------------------------------------
+
+	function verifyCurator(address account) public view {
+		if (checkCurator(account) == false) revert ErrorsLib.NotCuratorRole(account);
+	}
+
+	function verifyGuardian(address account) public view {
+		if (checkGuardian(account) == false) revert ErrorsLib.NotGuardianRole(account);
+	}
+
+	function verifyCuratorOrGuardian(address account) public view {
+		if (checkCuratorOrGuardian(account) == false) revert ErrorsLib.NotCuratorNorGuardianRole(account);
+	}
+
+	function verifyModule(address account) public view {
+		if (checkModule(account) == false) revert ErrorsLib.NotModuleRole(account);
+	}
+
+	function verifyValidModule(address account) public view {
+		if (checkValidModule(account) == false) revert ErrorsLib.ModuleNotValid(account);
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -118,21 +145,6 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	function burn(uint256 _amount) external {
 		_burn(_msgSender(), _amount);
-	}
-
-	// ---------------------------------------------------------------------------------------
-
-	function permitAndTransferFrom(
-		address owner,
-		address to,
-		uint256 value,
-		uint256 deadline,
-		uint8 v,
-		bytes32 r,
-		bytes32 s
-	) external {
-		permit(owner, _msgSender(), value, deadline, v, r, s);
-		transferFrom(owner, to, value);
 	}
 
 	// ---------------------------------------------------------------------------------------
