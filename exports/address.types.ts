@@ -18,6 +18,9 @@ export type ChainAddressMainnet = {
 	// identifier
 	chainId: typeof mainnet.id;
 	chainSelector: string;
+
+	// morpho related
+	morphoURD: Address;
 };
 
 export type ChainAddressPolygon = {

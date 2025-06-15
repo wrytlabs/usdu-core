@@ -6,6 +6,9 @@ export const ADDRESS: ChainAddressMap = {
 		// identifier
 		chainId: 1,
 		chainSelector: '5009297550715157269',
+
+		// morpho related
+		morphoURD: '0x330eefa8a787552DC5cAd3C3cA644844B1E61Ddb',
 	},
 	[polygon.id]: {
 		// identifier
