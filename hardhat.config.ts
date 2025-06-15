@@ -52,7 +52,6 @@ const config: HardhatUserConfig = {
 			gasMultiplier: 0.7,
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: false,
 		},
 		sepolia: {
 			url: `https://eth-sepolia.g.alchemy.com/v2/${alchemy}`,
@@ -61,7 +60,6 @@ const config: HardhatUserConfig = {
 			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: true,
 		},
 		polygon: {
 			url: `https://polygon-mainnet.g.alchemy.com/v2/${alchemy}`,
@@ -70,7 +68,6 @@ const config: HardhatUserConfig = {
 			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: false,
 		},
 		optimism: {
 			url: `https://opt-mainnet.g.alchemy.com/v2/${alchemy}`,
@@ -79,7 +76,6 @@ const config: HardhatUserConfig = {
 			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: false,
 		},
 		arbitrum: {
 			url: `https://arb-mainnet.g.alchemy.com/v2/${alchemy}`,
@@ -88,7 +84,6 @@ const config: HardhatUserConfig = {
 			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: false,
 		},
 		base: {
 			url: `https://base-mainnet.g.alchemy.com/v2/${alchemy}`,
@@ -97,7 +92,6 @@ const config: HardhatUserConfig = {
 			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: false,
 		},
 		avalanche: {
 			url: `https://avax-mainnet.g.alchemy.com/v2/${alchemy}`,
@@ -106,7 +100,6 @@ const config: HardhatUserConfig = {
 			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: false,
 		},
 		gnosis: {
 			url: `https://gnosis-mainnet.g.alchemy.com/v2/${alchemy}`,
@@ -115,7 +108,6 @@ const config: HardhatUserConfig = {
 			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: false,
 		},
 		citrea: {
 			url: `https://rpc.testnet.citrea.xyz`,
@@ -124,7 +116,6 @@ const config: HardhatUserConfig = {
 			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
-			testnet: true,
 		},
 	},
 	etherscan: {
