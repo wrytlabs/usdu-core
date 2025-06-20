@@ -11,7 +11,7 @@ import {ERC1363} from '@openzeppelin/contracts/token/ERC20/extensions/ERC1363.so
 
 import {Stablecoin} from '../stablecoin/Stablecoin.sol';
 
-contract CurveV1 {
+contract CurveAdapterV1 {
 	// ---------------------------------------------------------------------------------------
 
 	constructor() // Stablecoin _stable
@@ -20,4 +20,9 @@ contract CurveV1 {
 		// stable = _stable;
 		// coin = _coin;
 	}
+
+	/*
+		- add deposit
+		- staked not active
+	*/
 }
