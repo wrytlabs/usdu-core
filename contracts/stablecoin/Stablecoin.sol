@@ -264,6 +264,16 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
+	function setModulePublic(address module, uint256 expiredAt, string calldata message) external {
+		if (modules[module] == expiredAt) revert ErrorsLib.AlreadySet();
+		if (pendingModules[module].validAt != 0) revert ErrorsLib.AlreadyPending();
+
+		_transfer(_msgSender(), address(curator), ConstantsLib.PUBLIC_MODULE_PROPOSAL_FEE);
+
+		pendingModules[module].update(uint184(expiredAt), timelock * 2);
+		emit EventsLib.SubmitModule(module, block.timestamp + timelock * 2, expiredAt, message);
+	}
+
 	function revokePendingModule(address module) external onlyCuratorOrGuardian {
 		if (pendingModules[module].validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingModule(_msgSender(), module);

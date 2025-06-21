@@ -8,6 +8,11 @@ export const ADDRESS: ChainAddressMap = {
 		chainSelector: '5009297550715157269',
 
 		// morpho related
+		morphoBlue: '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb',
+		morphoIrm: '0x870aC11D48B15DB9a138Cf899d20F13F79Ba00BC',
+		morphoChainlinkOracleV2Factory: '0x3A7bB36Ee3f3eE32A60e9f2b33c1e5f2E83ad766',
+		morphoMetaMorphoFactory1_1: '0x1897A8997241C1cD4bD0698647e4EB7213535c24',
+		morphoPublicAllocator: '0xfd32fA2ca22c76dD6E550706Ad913FC6CE91c75D',
 		morphoURD: '0x330eefa8a787552DC5cAd3C3cA644844B1E61Ddb',
 	},
 	[polygon.id]: {

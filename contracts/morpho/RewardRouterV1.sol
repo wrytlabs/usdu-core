@@ -19,10 +19,15 @@ contract RewardRouterV1 is Ownable {
 
 	/*
         Generic and flexible code
+		- mapping with approved signers
         - array or mapping for address distributions
         - array with relative fees
         - array with executions?
     */
+
+	mapping(address => bool) approvedSigner;
+	mapping(address => bool) approvedTokens;
+	mapping(address => mapping(address => uint256)) approved;
 
 	// events
 	event Rewards(address indexed sender, address indexed token, uint256 amount);
@@ -39,10 +44,10 @@ contract RewardRouterV1 is Ownable {
 	// The contract immediately forwards the tokens to urd, avoiding custody.
 	/// @param token The token contract address
 	/// @param amount The amount to deposit
-	function deposit(address token, uint256 amount) external onlyOwner {
-		IERC20(token).transfer(msg.sender, amount);
-		IERC20(token).transferFrom(msg.sender, urd, amount);
-		emit Rewards(msg.sender, token, amount);
+	function deposit(address programSigner, address token, uint256 amount) external onlyOwner {
+		IERC20(token).transfer(programSigner, amount);
+		IERC20(token).transferFrom(programSigner, urd, amount);
+		emit Rewards(programSigner, token, amount);
 	}
 }
 

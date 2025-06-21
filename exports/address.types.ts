@@ -20,6 +20,11 @@ export type ChainAddressMainnet = {
 	chainSelector: string;
 
 	// morpho related
+	morphoBlue: Address;
+	morphoIrm: Address;
+	morphoChainlinkOracleV2Factory: Address;
+	morphoMetaMorphoFactory1_1: Address;
+	morphoPublicAllocator: Address;
 	morphoURD: Address;
 };
 

@@ -25,7 +25,6 @@ contract MorphoAdapterV1 is Context {
 	uint256 public totalSharesStaked;
 
 	uint256 public totalRevenue;
-	uint256 public ratioRevenue = 1 ether;
 
 	address[] receivers;
 	uint256[] weights;
@@ -36,7 +35,7 @@ contract MorphoAdapterV1 is Context {
 	event SetDistribution(uint256 length, uint256 totalWeights);
 	event Deposit(uint256 amount, uint256 sharesCore, uint256 sharesStaked);
 	event Redeem(uint256 amount, uint256 sharesCore, uint256 sharesStaked);
-	event Revenue(uint256 amount, uint256 ratioAmount, uint256 totalRevenue, uint256 ratioRevenue);
+	event Revenue(uint256 amount, uint256 totalRevenue, uint256 totalMinted);
 	event Distribution(address indexed receiver, uint256 amount, uint256 ratio);
 
 	// ---------------------------------------------------------------------------------------
@@ -87,15 +86,20 @@ contract MorphoAdapterV1 is Context {
 		totalWeights = 0;
 
 		// update total weight
-		uint256 len = receivers.length;
-		for (uint256 i = 0; i < len; i++) {
+		for (uint256 i = 0; i < receivers.length; i++) {
 			totalWeights += weights[i];
 		}
 
-		// update arrays
+		// update distribution
 		receivers = _receivers;
 		weights = _weights;
 	}
+
+	function revokePendingDistribution() external {}
+
+	function applyDistribution() external {}
+
+	function _setDistribution() internal {}
 
 	// ---------------------------------------------------------------------------------------
 
@@ -121,11 +125,14 @@ contract MorphoAdapterV1 is Context {
 		// withdraw from staked vault
 		staked.forceApprove(address(staked), sharesStaked);
 		uint256 sharesCore = staked.redeem(sharesStaked, address(this), address(this));
-		totalSharesStaked -= sharesStaked; // unchecked, static shares
 
 		// withdraw from core vault
 		core.forceApprove(address(core), sharesCore);
 		uint256 amount = core.redeem(sharesCore, address(this), address(this));
+
+		// reconcile
+		totalSharesStaked -= sharesStaked; // unchecked, static shares
+
 		if (totalSharesCore > sharesCore) {
 			totalSharesCore -= sharesCore;
 		} else {
@@ -135,7 +142,7 @@ contract MorphoAdapterV1 is Context {
 
 		if (totalMinted == 0 || totalSharesCore == 0) {
 			totalRevenue += amount;
-			emit Revenue(amount, 0, totalRevenue, ratioRevenue);
+			emit Revenue(amount, totalRevenue, totalMinted);
 			_distribute(amount);
 		} else {
 			// TODO: make calculation, e.g.:
@@ -147,7 +154,8 @@ contract MorphoAdapterV1 is Context {
 	}
 
 	function reconcile() external {
-		// TODO: available to be called by anyone?
+		// TODO: does this trigger "accrueInterest" in attached markets?
+		// still if not, accounting would be just deplayed
 		uint256 assetsFromStaked = staked.convertToAssets(totalSharesStaked);
 		uint256 assetsFromCore = core.convertToAssets(assetsFromStaked);
 
@@ -155,12 +163,9 @@ contract MorphoAdapterV1 is Context {
 			uint256 mintToReconcile = assetsFromCore - totalMinted;
 			totalRevenue += mintToReconcile;
 
-			uint256 ratioReconcile = (mintToReconcile * 1 ether) / totalMinted;
-			ratioRevenue += ratioReconcile;
-
-			emit Revenue(mintToReconcile, ratioReconcile, totalRevenue, ratioRevenue);
-
 			stable.mintModule(address(this), mintToReconcile);
+			emit Revenue(mintToReconcile, totalRevenue, totalMinted);
+
 			_distribute(mintToReconcile);
 		} else {
 			revert NothingToReconcile(assetsFromCore);
@@ -183,7 +188,10 @@ contract MorphoAdapterV1 is Context {
 				split = (weight * amount) / totalWeights;
 			}
 
+			// distribute revenue split
 			stable.transfer(receiver, split);
+
+			// last weighted ratio might be inconsistant, due to remaining assets distribution
 			emit Distribution(receiver, split, (weight * 1 ether) / totalWeights);
 		}
 	}
