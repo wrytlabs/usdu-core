@@ -29,6 +29,8 @@ contract GuardianV1 is ERC20, ERC20Permit, ERC1363 {
 		// create morpho deposit market
 	}
 
+	// create accumulated accounting to claim rewards
+
 	// update overwrite
 
 	// set/revoke/accept holding

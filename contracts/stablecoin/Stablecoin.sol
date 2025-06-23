@@ -9,10 +9,10 @@ import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ERC1363} from '@openzeppelin/contracts/token/ERC20/extensions/ERC1363.sol';
 
-import {ConstantsLib} from '../libraries/ConstantsLib.sol';
-import {ErrorsLib} from '../libraries/ErrorsLib.sol';
-import {EventsLib} from '../libraries/EventsLib.sol';
-import {PendingLib, PendingUint192, PendingAddress} from '../libraries/PendingLib.sol';
+import {ConstantsLib} from './libraries/ConstantsLib.sol';
+import {ErrorsLib} from './libraries/ErrorsLib.sol';
+import {EventsLib} from './libraries/EventsLib.sol';
+import {PendingLib, PendingUint192, PendingAddress} from './libraries/PendingLib.sol';
 
 contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	using Math for uint256;
