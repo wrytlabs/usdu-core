@@ -136,7 +136,7 @@ contract MorphoAdapterV1 is Context {
 		if (totalSharesCore > sharesCore) {
 			totalSharesCore -= sharesCore;
 		} else {
-			// meaning, this module paid everything off with its revenue
+			// meaning, this module paid everything off and is debt free
 			totalSharesCore = 0;
 		}
 

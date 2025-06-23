@@ -8,6 +8,6 @@ library ConstantsLib {
 	/// @dev The maximum delay of a timelock.
 	uint256 internal constant MAX_TIMELOCK = 4 weeks;
 
-	/// @dev The fee to pay for public module proposals
-	uint256 internal constant PUBLIC_MODULE_PROPOSAL_FEE = 5000 ether;
+	/// @dev The fee to pay for public proposals
+	uint256 internal constant PUBLIC_FEE = 10000 ether;
 }

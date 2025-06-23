@@ -32,8 +32,8 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	mapping(address module => uint256) public modules;
 	mapping(address module => PendingUint192) public pendingModules;
 
-	mapping(address account => bool) public freezed;
-	// TODO: pending unfreeze
+	mapping(address account => uint256) public unfreeze;
+	mapping(address account => PendingUint192) public pendingUnfreeze;
 
 	// ---------------------------------------------------------------------------------------
 
@@ -65,6 +65,12 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	modifier afterTimelock(uint256 validAt) {
 		if (validAt == 0) revert ErrorsLib.NoPendingValue();
 		if (block.timestamp < validAt) revert ErrorsLib.TimelockNotElapsed();
+		_;
+	}
+
+	modifier claimPublicFee(uint256 fee) {
+		if (fee < ConstantsLib.PUBLIC_FEE) revert ErrorsLib.ProposalFeeToLow(fee);
+		_transfer(_msgSender(), curator, ConstantsLib.PUBLIC_FEE);
 		_;
 	}
 
@@ -127,7 +133,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 	}
 
 	function verifyValidModule(address account) public view {
-		if (checkValidModule(account) == false) revert ErrorsLib.ModuleNotValid(account);
+		if (checkValidModule(account) == false) revert ErrorsLib.NotValidModuleRole(account);
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -138,8 +144,10 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		return super.allowance(owner, spender);
 	}
 
+	// TODO: optimize for gas?
 	function _update(address from, address to, uint256 value) internal virtual override {
-		if (freezed[from] == true) revert ErrorsLib.AccountFreezed(from);
+		uint256 since = unfreeze[from];
+		if (since != 0 && since <= block.timestamp) revert ErrorsLib.AccountFreezed(from, since);
 		super._update(from, to, value);
 	}
 
@@ -150,12 +158,12 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		_mint(to, value);
 	}
 
-	function burnModule(address from, uint256 _amount) external onlyModule {
-		_burn(from, _amount);
+	function burnModule(address from, uint256 amount) external onlyModule {
+		_burn(from, amount);
 	}
 
-	function burn(uint256 _amount) external {
-		_burn(_msgSender(), _amount);
+	function burn(uint256 amount) external {
+		_burn(_msgSender(), amount);
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -164,12 +172,12 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		if (curator == newCurator) revert ErrorsLib.AlreadySet();
 		if (pendingCurator.validAt != 0) revert ErrorsLib.AlreadyPending();
 		pendingCurator.update(newCurator, timelock);
-		emit EventsLib.SubmitCurator(_msgSender());
+		emit EventsLib.SubmitCurator(_msgSender(), newCurator, timelock);
 	}
 
-	function revokePendingCurator() external onlyCurator {
+	function revokePendingCurator() external onlyCuratorOrGuardian {
 		if (pendingCurator.validAt == 0) revert ErrorsLib.NoPendingValue();
-		emit EventsLib.RevokePendingCurator(_msgSender());
+		emit EventsLib.RevokePendingCurator(_msgSender(), pendingCurator.value);
 		delete pendingCurator;
 	}
 
@@ -191,13 +199,13 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 			_setGuardian(newGuardian);
 		} else {
 			pendingGuardian.update(newGuardian, timelock);
-			emit EventsLib.SubmitGuardian(newGuardian);
+			emit EventsLib.SubmitGuardian(_msgSender(), newGuardian, timelock);
 		}
 	}
 
 	function revokePendingGuardian() external onlyCuratorOrGuardian {
 		if (pendingGuardian.validAt == 0) revert ErrorsLib.NoPendingValue();
-		emit EventsLib.RevokePendingGuardian(_msgSender());
+		emit EventsLib.RevokePendingGuardian(_msgSender(), pendingGuardian.value);
 		delete pendingGuardian;
 	}
 
@@ -223,13 +231,13 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		} else {
 			// Safe "unchecked" cast because newTimelock <= MAX_TIMELOCK.
 			pendingTimelock.update(uint184(newTimelock), timelock);
-			emit EventsLib.SubmitTimelock(newTimelock);
+			emit EventsLib.SubmitTimelock(_msgSender(), newTimelock, timelock);
 		}
 	}
 
 	function revokePendingTimelock() external onlyCuratorOrGuardian {
 		if (pendingTimelock.validAt == 0) revert ErrorsLib.NoPendingValue();
-		emit EventsLib.RevokePendingTimelock(_msgSender());
+		emit EventsLib.RevokePendingTimelock(_msgSender(), pendingTimelock.value);
 		delete pendingTimelock;
 	}
 
@@ -260,23 +268,21 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 			_setModule(module, expiredAt);
 		} else {
 			pendingModules[module].update(uint184(expiredAt), timelock);
-			emit EventsLib.SubmitModule(module, block.timestamp + timelock, expiredAt, message);
+			emit EventsLib.SubmitModule(_msgSender(), module, expiredAt, message, timelock);
 		}
 	}
 
-	function setModulePublic(address module, uint256 expiredAt, string calldata message) external {
+	function setModulePublic(address module, uint256 expiredAt, string calldata message, uint256 fee) external claimPublicFee(fee) {
 		if (modules[module] == expiredAt) revert ErrorsLib.AlreadySet();
 		if (pendingModules[module].validAt != 0) revert ErrorsLib.AlreadyPending();
 
-		_transfer(_msgSender(), address(curator), ConstantsLib.PUBLIC_MODULE_PROPOSAL_FEE);
-
 		pendingModules[module].update(uint184(expiredAt), timelock * 2);
-		emit EventsLib.SubmitModule(module, block.timestamp + timelock * 2, expiredAt, message);
+		emit EventsLib.SubmitModule(_msgSender(), module, expiredAt, message, timelock * 2);
 	}
 
-	function revokePendingModule(address module) external onlyCuratorOrGuardian {
+	function revokePendingModule(address module, string calldata message) external onlyCuratorOrGuardian {
 		if (pendingModules[module].validAt == 0) revert ErrorsLib.NoPendingValue();
-		emit EventsLib.RevokePendingModule(_msgSender(), module);
+		emit EventsLib.RevokePendingModule(_msgSender(), module, message);
 		delete pendingModules[module];
 	}
 
@@ -292,5 +298,31 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 
-	// freeze
+	function setFreeze(address account, string calldata message) external onlyCurator {
+		if (unfreeze[account] > 0) revert ErrorsLib.AlreadySet();
+		unfreeze[account] = block.timestamp;
+		emit EventsLib.SetFreeze(_msgSender(), account, message);
+	}
+
+	// ---------------------------------------------------------------------------------------
+
+	function setUnfreeze(address account, string calldata message) external onlyCuratorOrGuardian {
+		if (unfreeze[account] == 0) revert ErrorsLib.AlreadySet();
+		if (pendingUnfreeze[account].validAt != 0) revert ErrorsLib.AlreadyPending();
+
+		pendingUnfreeze[account].update(uint184(0), timelock * 2);
+		emit EventsLib.SubmitUnfreeze(_msgSender(), account, message, timelock * 2);
+	}
+
+	function revokePendingUnfreeze(address account, string calldata message) external onlyCuratorOrGuardian {
+		if (pendingUnfreeze[account].validAt == 0) revert ErrorsLib.NoPendingValue();
+		emit EventsLib.RevokeUnfreeze(_msgSender(), account, message);
+		delete pendingUnfreeze[account];
+	}
+
+	function acceptUnfreeze(address account) external afterTimelock(pendingUnfreeze[account].validAt) {
+		unfreeze[account] = 0;
+		emit EventsLib.SetUnfreeze(_msgSender(), account);
+		delete pendingUnfreeze[account];
+	}
 }

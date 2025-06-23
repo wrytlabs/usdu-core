@@ -11,6 +11,10 @@ library ErrorsLib {
 	/// @notice Thrown when the caller doesn't have the curator nor the guardian role.
 	error NotCuratorNorGuardianRole(address account);
 
+	error NotModuleRole(address account);
+
+	error NotValidModuleRole(address account);
+
 	// ---------------------------------------------------------------------------------------
 
 	/// @notice Thrown when there's no pending value to set.
@@ -35,13 +39,7 @@ library ErrorsLib {
 
 	// ---------------------------------------------------------------------------------------
 
-	error NotModuleRole(address account);
+	error ProposalFeeToLow(uint256 fee);
 
-	error ModuleNotValid(address account);
-
-	// ---------------------------------------------------------------------------------------
-
-	error AccountFreezed(address account);
-
-	error AccountUnfreezed(address account);
+	error AccountFreezed(address account, uint256 since);
 }
