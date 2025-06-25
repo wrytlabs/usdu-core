@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 
 import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ERC1363} from '@openzeppelin/contracts/token/ERC20/extensions/ERC1363.sol';
@@ -14,7 +13,9 @@ import {ErrorsLib} from './libraries/ErrorsLib.sol';
 import {EventsLib} from './libraries/EventsLib.sol';
 import {PendingLib, PendingUint192, PendingAddress} from './libraries/PendingLib.sol';
 
-contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
+import {IStablecoin, IERC20} from './IStablecoin.sol';
+
+contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	using Math for uint256;
 	using SafeERC20 for ERC20;
 	using PendingLib for PendingUint192;
@@ -68,9 +69,9 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		_;
 	}
 
-	modifier claimPublicFee(uint256 fee) {
-		if (fee < ConstantsLib.PUBLIC_FEE) revert ErrorsLib.ProposalFeeToLow(fee);
-		_transfer(_msgSender(), curator, ConstantsLib.PUBLIC_FEE);
+	modifier claimPublicFee(uint256 fee, uint256 min) {
+		if (fee < min) revert ErrorsLib.ProposalFeeToLow(min);
+		_transfer(_msgSender(), curator, fee);
 		_;
 	}
 
@@ -87,7 +88,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		return
 			interfaceId == type(IERC20).interfaceId ||
 			interfaceId == type(ERC20Permit).interfaceId ||
-			// interfaceId == type(IStablecoin).interfaceId ||
+			interfaceId == type(IStablecoin).interfaceId ||
 			super.supportsInterface(interfaceId);
 	}
 
@@ -175,6 +176,13 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		emit EventsLib.SubmitCurator(_msgSender(), newCurator, timelock);
 	}
 
+	function setCuratorPublic(address newCurator, uint256 fee) external claimPublicFee(fee, ConstantsLib.PUBLIC_FEE * 10) {
+		if (curator == newCurator) revert ErrorsLib.AlreadySet();
+		if (pendingCurator.validAt != 0) revert ErrorsLib.AlreadyPending();
+		pendingCurator.update(newCurator, timelock * 2);
+		emit EventsLib.SubmitCurator(_msgSender(), newCurator, timelock * 2);
+	}
+
 	function revokePendingCurator() external onlyCuratorOrGuardian {
 		if (pendingCurator.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingCurator(_msgSender(), pendingCurator.value);
@@ -203,6 +211,8 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
+	// TODO: setGuardianPublic
+
 	function revokePendingGuardian() external onlyCuratorOrGuardian {
 		if (pendingGuardian.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingGuardian(_msgSender(), pendingGuardian.value);
@@ -221,7 +231,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 
-	function setTimelock(uint256 newTimelock) public onlyCurator {
+	function setTimelock(uint256 newTimelock) external onlyCurator {
 		if (timelock == newTimelock) revert ErrorsLib.AlreadySet();
 		if (pendingTimelock.validAt != 0) revert ErrorsLib.AlreadyPending();
 		_checkTimelockBounds(newTimelock);
@@ -272,7 +282,7 @@ contract Stablecoin is ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
-	function setModulePublic(address module, uint256 expiredAt, string calldata message, uint256 fee) external claimPublicFee(fee) {
+	function setModulePublic(address module, uint256 expiredAt, string calldata message, uint256 fee) external claimPublicFee(fee, ConstantsLib.PUBLIC_FEE) {
 		if (modules[module] == expiredAt) revert ErrorsLib.AlreadySet();
 		if (pendingModules[module].validAt != 0) revert ErrorsLib.AlreadyPending();
 

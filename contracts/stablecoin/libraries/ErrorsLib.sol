@@ -39,7 +39,7 @@ library ErrorsLib {
 
 	// ---------------------------------------------------------------------------------------
 
-	error ProposalFeeToLow(uint256 fee);
+	error ProposalFeeToLow(uint256 minimum);
 
 	error AccountFreezed(address account, uint256 since);
 }
