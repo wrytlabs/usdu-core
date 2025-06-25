@@ -21,9 +21,6 @@ contract MorphoAdapterV1 is Context {
 	IMetaMorphoV1_1 immutable staked;
 
 	uint256 public totalMinted;
-	uint256 public totalSharesCore;
-	uint256 public totalSharesStaked;
-
 	uint256 public totalRevenue;
 
 	address[] receivers;
@@ -33,8 +30,8 @@ contract MorphoAdapterV1 is Context {
 	// ---------------------------------------------------------------------------------------
 
 	event SetDistribution(uint256 length, uint256 totalWeights);
-	event Deposit(uint256 amount, uint256 sharesCore, uint256 sharesStaked);
-	event Redeem(uint256 amount, uint256 sharesCore, uint256 sharesStaked);
+	event Deposit(uint256 amount, uint256 sharesCore, uint256 sharesStaked, uint256 totalMinted);
+	event Redeem(uint256 amount, uint256 sharesCore, uint256 sharesStaked, uint256 totalMinted);
 	event Revenue(uint256 amount, uint256 totalRevenue, uint256 totalMinted);
 	event Distribution(address indexed receiver, uint256 amount, uint256 ratio);
 
@@ -108,69 +105,83 @@ contract MorphoAdapterV1 is Context {
 		stable.mintModule(address(this), amount);
 		totalMinted += amount;
 
-		// deposit into core vault
+		// approve stable for deposit into core vault
 		stable.forceApprove(address(core), amount);
 		uint256 sharesCore = core.deposit(amount, address(this));
-		totalSharesCore += sharesCore;
 
-		// deposit into staked vault
+		// approve core shares for deposit into staked vault
 		core.forceApprove(address(staked), sharesCore);
 		uint256 sharesStaked = staked.deposit(sharesCore, address(this));
-		totalSharesStaked += sharesStaked;
 
-		emit Deposit(amount, sharesCore, sharesStaked);
+		emit Deposit(amount, sharesCore, sharesStaked, totalMinted);
 	}
 
+	// ---------------------------------------------------------------------------------------
+
 	function redeem(uint256 sharesStaked) external onlyCurator {
-		// withdraw from staked vault
+		// approve staked shares for redeem from staked vault
 		staked.forceApprove(address(staked), sharesStaked);
 		uint256 sharesCore = staked.redeem(sharesStaked, address(this), address(this));
 
-		// withdraw from core vault
+		// approve core shares for redeem from core vault
 		core.forceApprove(address(core), sharesCore);
 		uint256 amount = core.redeem(sharesCore, address(this), address(this));
 
-		// reconcile
-		totalSharesStaked -= sharesStaked; // unchecked, static shares
+		// reconcile, removing assets keeps accounting accurate, triggers "accrueInterest" in attached markets
+		uint256 _convertToAssets = convertToAssets();
+		_reconcile(_convertToAssets + amount, true);
 
-		if (totalSharesCore > sharesCore) {
-			totalSharesCore -= sharesCore;
+		// reduce minted amount
+		if (totalMinted > amount) {
+			stable.burn(amount);
+			totalMinted -= amount;
 		} else {
-			// meaning, this module paid everything off and is debt free
-			totalSharesCore = 0;
+			stable.burn(totalMinted);
+			totalMinted = 0;
+
+			uint256 bal = stable.balanceOf(address(this));
+			if (bal > 0) {
+				_distribute(bal);
+			}
 		}
 
-		if (totalMinted == 0 || totalSharesCore == 0) {
-			totalRevenue += amount;
-			emit Revenue(amount, totalRevenue, totalMinted);
-			_distribute(amount);
-		} else {
-			// TODO: make calculation, e.g.:
-			// uint256 reduceMinted = (sharesCore/totalSharesCore) * totalMinted;
-			// stable.burnModule(address(this), reduceMinted);
-			// uint256 revenue = amount - reduceMinted;
-			// _distribute(revenue);
-		}
+		emit Redeem(amount, sharesCore, sharesStaked, totalMinted);
 	}
 
-	function reconcile() external {
-		// TODO: does this trigger "accrueInterest" in attached markets?
-		// still if not, accounting would be just deplayed
-		uint256 assetsFromStaked = staked.convertToAssets(totalSharesStaked);
-		uint256 assetsFromCore = core.convertToAssets(assetsFromStaked);
+	// ---------------------------------------------------------------------------------------
 
-		if (assetsFromCore > totalMinted) {
-			uint256 mintToReconcile = assetsFromCore - totalMinted;
+	// TODO: does this trigger "accrueInterest" in attached markets?
+	// still if not, accounting would be just deplayed
+	function convertToAssets() public view returns (uint256) {
+		uint256 assetsFromStaked = staked.convertToAssets(staked.balanceOf(address(this)));
+		return core.convertToAssets(assetsFromStaked);
+	}
+
+	function reconcile() public {
+		_reconcile(convertToAssets(), false);
+	}
+
+	function _reconcile(uint256 assets, bool allowPassing) internal returns (uint256) {
+		if (assets > totalMinted) {
+			uint256 mintToReconcile = assets - totalMinted;
 			totalRevenue += mintToReconcile;
 
 			stable.mintModule(address(this), mintToReconcile);
+			totalMinted += mintToReconcile;
 			emit Revenue(mintToReconcile, totalRevenue, totalMinted);
 
 			_distribute(mintToReconcile);
+			return mintToReconcile;
+		}
+
+		if (!allowPassing) {
+			revert NothingToReconcile(assets);
 		} else {
-			revert NothingToReconcile(assetsFromCore);
+			return 0;
 		}
 	}
+
+	// ---------------------------------------------------------------------------------------
 
 	function _distribute(uint256 amount) internal {
 		uint256 len = receivers.length;
