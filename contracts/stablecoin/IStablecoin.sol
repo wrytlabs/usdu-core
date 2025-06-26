@@ -6,20 +6,62 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 interface IStablecoin is IERC20 {
 	// ---------------------------------------------------------------------------------------
 
+	/**
+	 * Checks if an account has the role of curator.
+	 *
+	 * @param account The account to check
+	 * @return True if the account is a curator, false otherwise
+	 */
 	function checkCurator(address account) external view returns (bool);
 
+	/**
+	 * Checks if an account has the role of guardian.
+	 *
+	 * @param account The account to check
+	 * @return True if the account is a guardian, false otherwise
+	 */
 	function checkGuardian(address account) external view returns (bool);
 
+	/**
+	 * Checks if an account is either a curator or a guardian.
+	 *
+	 * @param account The account to check
+	 * @return True if the account is a curator or a guardian, false otherwise
+	 */
 	function checkCuratorOrGuardian(address account) external view returns (bool);
 
+	/**
+	 * Checks if an account has been approved as a module.
+	 *
+	 * @param account The account to check
+	 * @return True if the account is a valid module, false otherwise
+	 */
 	function checkModule(address account) external view returns (bool);
 
+	/**
+	 * Checks if an account is a valid module that has been approved.
+	 *
+	 * @param account The account to check
+	 * @return True if the account is a valid and approved module, false otherwise
+	 */
 	function checkValidModule(address account) external view returns (bool);
 
 	// ---------------------------------------------------------------------------------------
 
+	/**
+	 * Verifys if an account has the role of curator.
+	 *
+	 * @param account The account to verify
+	 * @notice Reverts if the account is NOT a curator
+	 */
 	function verifyCurator(address account) external view;
 
+	/**
+	 * Verifys if an account has the role of guardian.
+	 *
+	 * @param account The account to verify
+	 * @notice Reverts if the account is NOT a guardian
+	 */
 	function verifyGuardian(address account) external view;
 
 	function verifyCuratorOrGuardian(address account) external view;

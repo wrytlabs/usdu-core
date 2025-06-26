@@ -2142,7 +2142,7 @@
     tslog "^4.3.1"
     typescript "^5.5.4"
 
-"@tenderly/hardhat-tenderly@^2.3.0":
+"@tenderly/hardhat-tenderly@^2.5.2":
   version "2.5.2"
   resolved "https://registry.yarnpkg.com/@tenderly/hardhat-tenderly/-/hardhat-tenderly-2.5.2.tgz#e0c632961b7f7a130e8708abc37f429c11601695"
   integrity sha512-JCG1UkFBRZE2fL8g4jfbKUsju7gK3Dg6CxksJO9Db9ckM1EkL4wCY9G5KTLwh/UL0cT04J8ZK1RmaZ6hG8wfKA==

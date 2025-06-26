@@ -12,6 +12,9 @@ import { getChildFromSeed } from './helper/wallet';
 import dotenv from 'dotenv';
 dotenv.config();
 
+import * as tdly from '@tenderly/hardhat-tenderly';
+import { tenderly } from 'hardhat';
+
 // ---------------------------------------------------------------------------------------
 
 const indexParsed = process.env.DEPLOYER_SEED_INDEX;
@@ -43,6 +46,11 @@ const config: HardhatUserConfig = {
 			},
 		},
 	},
+	tenderly: {
+		project: process.env.TENDERLY_PROJECT ?? '',
+		username: process.env.TENDERLY_USERNAME ?? '',
+		privateVerification: true,
+	},
 	networks: {
 		mainnet: {
 			url: `https://eth-mainnet.g.alchemy.com/v2/${alchemy}`,
@@ -50,6 +58,14 @@ const config: HardhatUserConfig = {
 			gas: 'auto',
 			gasPrice: 'auto',
 			gasMultiplier: 0.7,
+			accounts: [wallet.privateKey],
+			timeout: 50_000,
+		},
+		tenderly: {
+			url: process.env.TENDERLY_RPC_URL,
+			chainId: 42069,
+			gas: 'auto',
+			gasPrice: 'auto',
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
 		},
@@ -119,20 +135,29 @@ const config: HardhatUserConfig = {
 		},
 	},
 	etherscan: {
-		apiKey: etherscan,
-		// apiKey: {
-		// citrea: 'your API key',
-		// },
-		// customChains: [
-		// 	{
-		// 		network: 'citrea',
-		// 		chainId: 5115,
-		// 		urls: {
-		// 			apiURL: 'https://explorer.testnet.citrea.xyz/api',
-		// 			browserURL: 'https://explorer.testnet.citrea.xyz',
-		// 		},
-		// 	},
-		// ],
+		// apiKey: etherscan,
+		apiKey: {
+			tenderly: '',
+			citrea: 'your API key',
+		},
+		customChains: [
+			{
+				network: 'tenderly',
+				chainId: 42069,
+				urls: {
+					apiURL: `${process.env.TENDERLY_RPC_URL ?? ''}/verify/etherscan`,
+					browserURL: process.env.TENDERLY_RPC_URL ?? '',
+				},
+			},
+			{
+				network: 'citrea',
+				chainId: 5115,
+				urls: {
+					apiURL: 'https://explorer.testnet.citrea.xyz/api',
+					browserURL: 'https://explorer.testnet.citrea.xyz',
+				},
+			},
+		],
 	},
 	sourcify: {
 		enabled: true,
