@@ -23,8 +23,8 @@ contract MorphoAdapterV1 is Context {
 	uint256 public totalMinted;
 	uint256 public totalRevenue;
 
-	address[] receivers;
-	uint256[] weights;
+	address[5] receivers;
+	uint32[5] weights;
 	uint256 totalWeights;
 
 	// ---------------------------------------------------------------------------------------
@@ -50,10 +50,12 @@ contract MorphoAdapterV1 is Context {
 
 	// ---------------------------------------------------------------------------------------
 
-	constructor(Stablecoin _stable, IMetaMorphoV1_1 _core, IMetaMorphoV1_1 _staked) {
+	constructor(Stablecoin _stable, IMetaMorphoV1_1 _core, IMetaMorphoV1_1 _staked, address[5] memory _receivers, uint32[5] memory _weights) {
 		stable = _stable;
 		core = _core;
 		staked = _staked;
+		receivers = _receivers;
+		weights = _weights;
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -76,14 +78,14 @@ contract MorphoAdapterV1 is Context {
 
 	// TODO: needs a guardian step before applying
 
-	function setDistribution(address[] calldata _receivers, uint256[] calldata _weights) external onlyCurator {
+	function setDistribution(address[5] calldata _receivers, uint32[5] calldata _weights) external onlyCurator {
 		if (_receivers.length != _weights.length) revert MismatchLength(_receivers.length, _weights.length);
 
 		// reset totalWeights
 		totalWeights = 0;
 
 		// update total weight
-		for (uint256 i = 0; i < receivers.length; i++) {
+		for (uint32 i = 0; i < receivers.length; i++) {
 			totalWeights += weights[i];
 		}
 
@@ -189,6 +191,9 @@ contract MorphoAdapterV1 is Context {
 			address receiver = receivers[i];
 			uint256 weight = weights[i];
 			uint256 split;
+
+			// end distribution
+			if (receiver == address(0)) return;
 
 			// last item?
 			if (i == len - 1) {

@@ -20,8 +20,9 @@ contract VaultDeployer {
 	IMetaMorphoV1_1 immutable core;
 	IMetaMorphoV1_1 immutable staked;
 
-	// MorphoAdapterV1 immutable adapter;
-	// RewardRouterV1 immutable reward;
+	MorphoAdapterV1 immutable adapter;
+
+	RewardRouterV1 immutable reward;
 
 	// GuardianV1 immutable guardian;
 
@@ -53,34 +54,27 @@ contract VaultDeployer {
 		staked.setSkimRecipient(_curator);
 		staked.setIsAllocator(0xfd32fA2ca22c76dD6E550706Ad913FC6CE91c75D, true);
 
-		// set up guardian
-		//
-
 		// set up markets
-		MarketParams memory marketStableIdle = MarketParams(address(stable), address(0), address(0), address(0), 0);
-		MarketParams memory marketStakedIdle = MarketParams(address(core), address(0), address(0), address(0), 0);
-		morpho.createMarket(marketStableIdle);
-		morpho.createMarket(marketStakedIdle);
+		morpho.createMarket(MarketParams(address(stable), address(0), address(0), address(0), 0));
+		morpho.createMarket(MarketParams(address(core), address(0), address(0), address(0), 0));
 
-		// attach markets to core vaults
-		core.submitCap(marketStakedIdle, type(uint184).max);
-		core.acceptCap(marketStakedIdle);
+		// attach stable idle market to core vault
+		core.submitCap(MarketParams(address(stable), address(0), address(0), address(0), 0), 100_000_000 ether);
+		core.acceptCap(MarketParams(address(stable), address(0), address(0), address(0), 0));
 
-		// attach markets to staked vaults
-		staked.submitCap(marketStableIdle, type(uint184).max);
-		staked.acceptCap(marketStableIdle);
+		// attach staked idle market to staked vault
+		staked.submitCap(MarketParams(address(core), address(0), address(0), address(0), 0), 100_000_000 ether);
+		staked.acceptCap(MarketParams(address(core), address(0), address(0), address(0), 0));
 
-		/*
-		
-		// set up morpho adapter and reward router
-		adapter = new MorphoAdapterV1(stable, core, staked);
-		reward = new RewardRouterV1(0x330eefa8a787552DC5cAd3C3cA644844B1E61Ddb, _curator);
+		// set up reward helper
+		address URD = 0x330eefa8a787552DC5cAd3C3cA644844B1E61Ddb;
+		reward = new RewardRouterV1(URD, _curator);
 
-		address[] memory receivers;
-		receivers[0] = address(reward);
-		uint256[] memory weights;
-		weights[0] = 1000;
-		adapter.setDistribution(receivers, weights);
+		// // set up morpho adapter and reward router
+		address[5] memory receivers = [address(reward), address(0), address(0), address(0), address(0)];
+		uint32[5] memory weights = [uint32(1000), uint32(0), uint32(0), uint32(0), uint32(0)];
+
+		adapter = new MorphoAdapterV1(stable, core, staked, receivers, weights);
 
 		// set up curve adapter
 		// curve = new CurveAdapterV1(stable, ...);
@@ -93,13 +87,8 @@ contract VaultDeployer {
 		stable.setCurator(curator); // no timelock, new curator needs to accept role
 		stable.setTimelock(7 days); // will apply now for further steps
 
-		*/
-	}
-
-	function finalize() external {
-		// core.setSupplyQueue();
-		// core.setWithdrawQueue();
-		// prepare vaults for curator
-		// core.
+		// prepare vaults for curator, needs 2nd step to accept new role
+		core.transferOwnership(curator);
+		staked.transferOwnership(curator);
 	}
 }

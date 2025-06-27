@@ -83,7 +83,6 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 
 	// ---------------------------------------------------------------------------------------
 
-	// TODO: IStablecoin
 	function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
 		return
 			interfaceId == type(IERC20).interfaceId ||
@@ -108,7 +107,7 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	}
 
 	function checkModule(address account) public view returns (bool) {
-		return modules[account] > 0;
+		return modules[account] != 0;
 	}
 
 	function checkValidModule(address account) public view returns (bool) {
@@ -141,11 +140,10 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	// allowance and update modifications
 
 	function allowance(address owner, address spender) public view virtual override(ERC20, IERC20) returns (uint256) {
-		if (modules[_msgSender()] > block.timestamp) return type(uint256).max;
+		if (checkValidModule(_msgSender())) return type(uint256).max;
 		return super.allowance(owner, spender);
 	}
 
-	// TODO: optimize for gas?
 	function _update(address from, address to, uint256 value) internal virtual override {
 		uint256 since = unfreeze[from];
 		if (since != 0 && since <= block.timestamp) revert ErrorsLib.AccountFreezed(from, since);
