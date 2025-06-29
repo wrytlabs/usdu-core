@@ -6,125 +6,206 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 interface IStablecoin is IERC20 {
 	// ---------------------------------------------------------------------------------------
 
-	/**
-	 * Checks if an account has the role of curator.
-	 *
-	 * @param account The account to check
-	 * @return True if the account is a curator, false otherwise
-	 */
+	/// @notice Checks if the given account has the curator role.
+	/// @param account The address to check.
+	/// @return True if the account is a curator, false otherwise.
 	function checkCurator(address account) external view returns (bool);
 
-	/**
-	 * Checks if an account has the role of guardian.
-	 *
-	 * @param account The account to check
-	 * @return True if the account is a guardian, false otherwise
-	 */
+	/// @notice Checks if the given account has the guardian role.
+	/// @param account The address to check.
+	/// @return True if the account is a guardian, false otherwise.
 	function checkGuardian(address account) external view returns (bool);
 
-	/**
-	 * Checks if an account is either a curator or a guardian.
-	 *
-	 * @param account The account to check
-	 * @return True if the account is a curator or a guardian, false otherwise
-	 */
+	/// @notice Checks if the given account is either a curator or a guardian.
+	/// @param account The address to check.
+	/// @return True if the account is a curator or a guardian, false otherwise.
 	function checkCuratorOrGuardian(address account) external view returns (bool);
 
-	/**
-	 * Checks if an account has been approved as a module.
-	 *
-	 * @param account The account to check
-	 * @return True if the account is a valid module, false otherwise
-	 */
+	/// @notice Checks if the given account has any module role (active or expired).
+	/// @param account The address to check.
+	/// @return True if the account is a module, false otherwise.
 	function checkModule(address account) external view returns (bool);
 
-	/**
-	 * Checks if an account is a valid module that has been approved.
-	 *
-	 * @param account The account to check
-	 * @return True if the account is a valid and approved module, false otherwise
-	 */
+	/// @notice Checks if the given account is a valid (non-expired) module.
+	/// @param account The address to check.
+	/// @return True if the account is a valid module, false otherwise.
 	function checkValidModule(address account) external view returns (bool);
 
 	// ---------------------------------------------------------------------------------------
 
-	/**
-	 * Verifys if an account has the role of curator.
-	 *
-	 * @param account The account to verify
-	 * @notice Reverts if the account is NOT a curator
-	 */
+	/// @notice Verifies that the given account is a curator.
+	/// @dev Reverts if the account is not a curator.
+	/// @param account The address to verify.
 	function verifyCurator(address account) external view;
 
-	/**
-	 * Verifys if an account has the role of guardian.
-	 *
-	 * @param account The account to verify
-	 * @notice Reverts if the account is NOT a guardian
-	 */
+	/// @notice Verifies that the given account is a guardian.
+	/// @dev Reverts if the account is not a guardian.
+	/// @param account The address to verify.
 	function verifyGuardian(address account) external view;
 
+	/// @notice Verifies that the given account is either a curator or a guardian.
+	/// @dev Reverts if the account is neither a curator nor a guardian.
+	/// @param account The address to verify.
 	function verifyCuratorOrGuardian(address account) external view;
 
+	/// @notice Verifies that the given account has a module role (active or expired).
+	/// @dev Reverts if the account is not a module.
+	/// @param account The address to verify.
 	function verifyModule(address account) external view;
 
+	/// @notice Verifies that the given account is a valid (non-expired) module.
+	/// @dev Reverts if the account is not a valid module.
+	/// @param account The address to verify.
 	function verifyValidModule(address account) external view;
 
 	// ---------------------------------------------------------------------------------------
 
-	function mintModule(address to, uint256 value) external; // validModule
+	/// @notice Mints `value` tokens to address `to`.
+	/// @dev Callable only by addresses with the `validModule` role.
+	/// @param to The address receiving the minted tokens.
+	/// @param value The amount of tokens to mint.
+	/// @custom:role validModule
+	function mintModule(address to, uint256 value) external;
 
-	function burnModule(address from, uint256 amount) external; // onlyModule
+	/// @notice Burns `amount` tokens from address `from`.
+	/// @dev Callable only by addresses with the `onlyModule` role.
+	/// @param from The address whose tokens will be burned.
+	/// @param amount The amount of tokens to burn.
+	/// @custom:role onlyModule
+	function burnModule(address from, uint256 amount) external;
 
-	function burn(uint256 amount) external; // public role
-
-	// ---------------------------------------------------------------------------------------
-
-	function setCurator(address newCurator) external; // onlyCurator
-
-	function setCuratorPublic(address newCurator, uint256 fee) external; // claimPublicFee(fee, ConstantsLib.PUBLIC_FEE * 10)
-
-	function revokePendingCurator() external; // onlyCuratorOrGuardian
-
-	function acceptCurator() external; // afterTimelock(pendingCurator.validAt)
-
-	// ---------------------------------------------------------------------------------------
-
-	function setGuardian(address newGuardian) external; // onlyCurator
-
-	function revokePendingGuardian() external; // onlyCuratorOrGuardian
-
-	function acceptGuardian() external; // afterTimelock(pendingGuardian.validAt)
+	/// @notice Burns `amount` tokens from the caller's balance.
+	/// @dev Publicly accessible by any user with sufficient balance.
+	/// @param amount The amount of tokens to burn.
+	/// @custom:role public
+	function burn(uint256 amount) external;
 
 	// ---------------------------------------------------------------------------------------
 
-	function setTimelock(uint256 newTimelock) external; // onlyCurator
+	/// @notice Sets a new curator for the contract.
+	/// @dev Callable only by the current curator.
+	/// @dev Applies a timelock that is twice as long
+	/// @param newCurator The address to assign as the new curator.
+	/// @custom:role onlyCurator
+	function setCurator(address newCurator) external;
 
-	function revokePendingTimelock() external; // onlyCuratorOrGuardian
+	/// @notice Publicly initiates a curator change by paying a fee.
+	/// @dev Caller must pay `fee`, which must be at least `ConstantsLib.PUBLIC_FEE * 10`.
+	/// @param newCurator The address to be proposed as the new curator.
+	/// @param fee The fee amount submitted with the transaction.
+	/// @custom:rule claimPublicFee(fee, ConstantsLib.PUBLIC_FEE * 10)
+	function setCuratorPublic(address newCurator, uint256 fee) external;
 
-	function acceptTimelock() external; // afterTimelock(pendingTimelock.validAt)
+	/// @notice Cancels a pending curator proposal.
+	/// @dev Callable by either the current curator or a guardian.
+	/// @custom:role onlyCuratorOrGuardian
+	function revokePendingCurator() external;
+
+	/// @notice Accepts the curator role after the timelock period.
+	/// @dev Only new curator can accept the new role.
+	/// @dev Callable only after `pendingCurator.validAt` timestamp has passed.
+	/// @custom:rule afterTimelock(pendingCurator.validAt)
+	function acceptCurator() external;
 
 	// ---------------------------------------------------------------------------------------
 
-	function setModule(address module, uint256 expiredAt, string calldata message) external; // onlyCurator
+	/// @notice Sets a new guardian for the contract.
+	/// @dev Callable only by the current curator.
+	/// @param newGuardian The address to assign as the new guardian.
+	/// @custom:role onlyCurator
+	function setGuardian(address newGuardian) external;
 
-	function setModulePublic(address module, uint256 expiredAt, string calldata message, uint256 fee) external; // claimPublicFee(fee, ConstantsLib.PUBLIC_FEE)
+	/// @notice Cancels a pending guardian proposal.
+	/// @dev Callable by either the current curator or the current guardian.
+	/// @custom:role onlyCuratorOrGuardian
+	function revokePendingGuardian() external;
 
-	function revokePendingModule(address module, string calldata message) external; // onlyCuratorOrGuardian
-
-	function acceptModule(address module) external; // afterTimelock(pendingModules[module].validAt)
+	/// @notice Accepts the guardian role after the timelock period.
+	/// @dev Callable only after `pendingGuardian.validAt` timestamp has passed.
+	/// @custom:rule afterTimelock(pendingGuardian.validAt)
+	function acceptGuardian() external;
 
 	// ---------------------------------------------------------------------------------------
 
-	function setFreeze(address account, string calldata message) external; // onlyCurator
+	/// @notice Proposes a new timelock duration for sensitive actions.
+	/// @dev Callable only by the current curator.
+	/// @param newTimelock The new timelock duration (typically in seconds).
+	/// @custom:role onlyCurator
+	function setTimelock(uint256 newTimelock) external;
+
+	/// @notice Cancels a pending timelock change.
+	/// @dev Callable by either the curator or the guardian.
+	/// @custom:role onlyCuratorOrGuardian
+	function revokePendingTimelock() external;
+
+	/// @notice Finalizes the timelock change after the delay period.
+	/// @dev Callable only after `pendingTimelock.validAt` has passed.
+	/// @custom:rule afterTimelock(pendingTimelock.validAt)
+	function acceptTimelock() external;
 
 	// ---------------------------------------------------------------------------------------
 
-	function setUnfreeze(address account, string calldata message) external; // onlyCuratorOrGuardian
+	/// @notice Proposes a new module with an expiration time and message.
+	/// @dev Callable only by the curator.
+	/// @param module The address of the module to add.
+	/// @param expiredAt The timestamp when the module should expire.
+	/// @param message A message describing the module purpose or context.
+	/// @custom:role onlyCurator
+	function setModule(address module, uint256 expiredAt, string calldata message) external;
 
-	function revokePendingUnfreeze(address account, string calldata message) external; // onlyCuratorOrGuardian
+	/// @notice Publicly proposes a new module by paying a fee.
+	/// @dev Requires a fee at least equal to `ConstantsLib.PUBLIC_FEE`.
+	/// @dev Applies a timelock that is twice as long
+	/// @param module The address of the module to add.
+	/// @param expiredAt The timestamp when the module should expire.
+	/// @param message A message describing the module purpose or context.
+	/// @param fee The fee amount submitted with the transaction.
+	/// @custom:rule claimPublicFee(fee, ConstantsLib.PUBLIC_FEE)
+	function setModulePublic(address module, uint256 expiredAt, string calldata message, uint256 fee) external;
 
-	function acceptUnfreeze(address account) external; // afterTimelock(pendingUnfreeze[account].validAt)
+	/// @notice Cancels a pending module proposal.
+	/// @dev Callable by either the curator or the guardian.
+	/// @param module The address of the module to revoke.
+	/// @param message A message explaining the revocation.
+	/// @custom:role onlyCuratorOrGuardian
+	function revokePendingModule(address module, string calldata message) external;
+
+	/// @notice Finalizes the addition of a module after the timelock period.
+	/// @dev Callable only after `pendingModules[module].validAt` has passed.
+	/// @param module The address of the module to accept.
+	/// @custom:rule afterTimelock(pendingModules[module].validAt)
+	function acceptModule(address module) external;
+
+	// ---------------------------------------------------------------------------------------
+
+	/// @notice Freezes the specified account, typically to restrict actions like transfers or module usage.
+	/// @dev Callable only by the curator.
+	/// @param account The address to be frozen.
+	/// @param message A message explaining the reason for freezing the account.
+	/// @custom:role onlyCurator
+	function setFreeze(address account, string calldata message) external;
+
+	// ---------------------------------------------------------------------------------------
+
+	/// @notice Initiates the unfreezing of a frozen account.
+	/// @dev Callable by either the curator or the guardian.
+	/// @param account The address to be unfrozen.
+	/// @param message A message explaining the reason for unfreezing.
+	/// @custom:role onlyCuratorOrGuardian
+	function setUnfreeze(address account, string calldata message) external;
+
+	/// @notice Cancels a pending unfreeze request.
+	/// @dev Callable by either the curator or the guardian.
+	/// @param account The address whose unfreeze request is being revoked.
+	/// @param message A message explaining the revocation.
+	/// @custom:role onlyCuratorOrGuardian
+	function revokePendingUnfreeze(address account, string calldata message) external;
+
+	/// @notice Finalizes the unfreezing of an account after the timelock period.
+	/// @dev Callable only after `pendingUnfreeze[account].validAt` has passed.
+	/// @param account The address to unfreeze.
+	/// @custom:rule afterTimelock(pendingUnfreeze[account].validAt)
+	function acceptUnfreeze(address account) external;
 
 	// ---------------------------------------------------------------------------------------
 }

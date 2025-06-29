@@ -92,58 +92,71 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	}
 
 	// ---------------------------------------------------------------------------------------
-	// modifier functions with public visibility
+	// check role functions with public visibility
 
+	/// @inheritdoc IStablecoin
 	function checkCurator(address account) public view returns (bool) {
 		return account == curator;
 	}
 
+	/// @inheritdoc IStablecoin
 	function checkGuardian(address account) public view returns (bool) {
 		return account == guardian;
 	}
 
+	/// @inheritdoc IStablecoin
 	function checkCuratorOrGuardian(address account) public view returns (bool) {
 		return (account == curator || account == guardian);
 	}
 
+	/// @inheritdoc IStablecoin
 	function checkModule(address account) public view returns (bool) {
 		return modules[account] != 0;
 	}
 
+	/// @inheritdoc IStablecoin
 	function checkValidModule(address account) public view returns (bool) {
 		return modules[account] > block.timestamp;
 	}
 
 	// ---------------------------------------------------------------------------------------
+	// verify role functions with public visibility
 
+	/// @inheritdoc IStablecoin
 	function verifyCurator(address account) public view {
 		if (checkCurator(account) == false) revert ErrorsLib.NotCuratorRole(account);
 	}
 
+	/// @inheritdoc IStablecoin
 	function verifyGuardian(address account) public view {
 		if (checkGuardian(account) == false) revert ErrorsLib.NotGuardianRole(account);
 	}
 
+	/// @inheritdoc IStablecoin
 	function verifyCuratorOrGuardian(address account) public view {
 		if (checkCuratorOrGuardian(account) == false) revert ErrorsLib.NotCuratorNorGuardianRole(account);
 	}
 
+	/// @inheritdoc IStablecoin
 	function verifyModule(address account) public view {
 		if (checkModule(account) == false) revert ErrorsLib.NotModuleRole(account);
 	}
 
+	/// @inheritdoc IStablecoin
 	function verifyValidModule(address account) public view {
 		if (checkValidModule(account) == false) revert ErrorsLib.NotValidModuleRole(account);
 	}
 
 	// ---------------------------------------------------------------------------------------
-	// allowance and update modifications
+	// allowance and update ERC20 modifications
 
+	/// @inheritdoc ERC20
 	function allowance(address owner, address spender) public view virtual override(ERC20, IERC20) returns (uint256) {
 		if (checkValidModule(_msgSender())) return type(uint256).max;
 		return super.allowance(owner, spender);
 	}
 
+	/// @inheritdoc ERC20
 	function _update(address from, address to, uint256 value) internal virtual override {
 		uint256 since = unfreeze[from];
 		if (since != 0 && since <= block.timestamp) revert ErrorsLib.AccountFreezed(from, since);
@@ -151,22 +164,27 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	}
 
 	// ---------------------------------------------------------------------------------------
-	// allow minting modules to mint tokens
+	// allow minting modules to mint and burnFrom. allow anyone to burn tokens
 
+	/// @inheritdoc IStablecoin
 	function mintModule(address to, uint256 value) external validModule {
 		_mint(to, value);
 	}
 
+	/// @inheritdoc IStablecoin
 	function burnModule(address from, uint256 amount) external onlyModule {
 		_burn(from, amount);
 	}
 
+	/// @inheritdoc IStablecoin
 	function burn(uint256 amount) external {
 		_burn(_msgSender(), amount);
 	}
 
 	// ---------------------------------------------------------------------------------------
+	// curator management
 
+	/// @inheritdoc IStablecoin
 	function setCurator(address newCurator) external onlyCurator {
 		if (curator == newCurator) revert ErrorsLib.AlreadySet();
 		if (pendingCurator.validAt != 0) revert ErrorsLib.AlreadyPending();
@@ -174,6 +192,7 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 		emit EventsLib.SubmitCurator(_msgSender(), newCurator, timelock);
 	}
 
+	/// @inheritdoc IStablecoin
 	function setCuratorPublic(address newCurator, uint256 fee) external claimPublicFee(fee, ConstantsLib.PUBLIC_FEE * 10) {
 		if (curator == newCurator) revert ErrorsLib.AlreadySet();
 		if (pendingCurator.validAt != 0) revert ErrorsLib.AlreadyPending();
@@ -181,13 +200,14 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 		emit EventsLib.SubmitCurator(_msgSender(), newCurator, timelock * 2);
 	}
 
+	/// @inheritdoc IStablecoin
 	function revokePendingCurator() external onlyCuratorOrGuardian {
 		if (pendingCurator.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingCurator(_msgSender(), pendingCurator.value);
 		delete pendingCurator;
 	}
 
-	/// @dev Only new curator can accept the new role after timelock
+	/// @inheritdoc IStablecoin
 	function acceptCurator() external afterTimelock(pendingCurator.validAt) {
 		if (pendingCurator.value != _msgSender()) revert ErrorsLib.NotCuratorRole(_msgSender());
 		curator = pendingCurator.value;
@@ -196,7 +216,9 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	}
 
 	// ---------------------------------------------------------------------------------------
+	// guardian management
 
+	/// @inheritdoc IStablecoin
 	function setGuardian(address newGuardian) external onlyCurator {
 		if (guardian == newGuardian) revert ErrorsLib.AlreadySet();
 		if (pendingGuardian.validAt != 0) revert ErrorsLib.AlreadyPending();
@@ -209,14 +231,14 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
-	// TODO: setGuardianPublic
-
+	/// @inheritdoc IStablecoin
 	function revokePendingGuardian() external onlyCuratorOrGuardian {
 		if (pendingGuardian.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingGuardian(_msgSender(), pendingGuardian.value);
 		delete pendingGuardian;
 	}
 
+	/// @inheritdoc IStablecoin
 	function acceptGuardian() external afterTimelock(pendingGuardian.validAt) {
 		_setGuardian(pendingGuardian.value);
 	}
@@ -228,7 +250,9 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	}
 
 	// ---------------------------------------------------------------------------------------
+	// timelock management
 
+	/// @inheritdoc IStablecoin
 	function setTimelock(uint256 newTimelock) external onlyCurator {
 		if (timelock == newTimelock) revert ErrorsLib.AlreadySet();
 		if (pendingTimelock.validAt != 0) revert ErrorsLib.AlreadyPending();
@@ -243,12 +267,14 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
+	/// @inheritdoc IStablecoin
 	function revokePendingTimelock() external onlyCuratorOrGuardian {
 		if (pendingTimelock.validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingTimelock(_msgSender(), pendingTimelock.value);
 		delete pendingTimelock;
 	}
 
+	/// @inheritdoc IStablecoin
 	function acceptTimelock() external afterTimelock(pendingTimelock.validAt) {
 		_setTimelock(pendingTimelock.value);
 	}
@@ -267,7 +293,9 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	}
 
 	// ---------------------------------------------------------------------------------------
+	// module managment
 
+	/// @inheritdoc IStablecoin
 	function setModule(address module, uint256 expiredAt, string calldata message) external onlyCurator {
 		if (modules[module] == expiredAt) revert ErrorsLib.AlreadySet();
 		if (pendingModules[module].validAt != 0) revert ErrorsLib.AlreadyPending();
@@ -280,6 +308,7 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 		}
 	}
 
+	/// @inheritdoc IStablecoin
 	function setModulePublic(address module, uint256 expiredAt, string calldata message, uint256 fee) external claimPublicFee(fee, ConstantsLib.PUBLIC_FEE) {
 		if (modules[module] == expiredAt) revert ErrorsLib.AlreadySet();
 		if (pendingModules[module].validAt != 0) revert ErrorsLib.AlreadyPending();
@@ -288,12 +317,14 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 		emit EventsLib.SubmitModule(_msgSender(), module, expiredAt, message, timelock * 2);
 	}
 
+	/// @inheritdoc IStablecoin
 	function revokePendingModule(address module, string calldata message) external onlyCuratorOrGuardian {
 		if (pendingModules[module].validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokePendingModule(_msgSender(), module, message);
 		delete pendingModules[module];
 	}
 
+	/// @inheritdoc IStablecoin
 	function acceptModule(address module) external afterTimelock(pendingModules[module].validAt) {
 		_setModule(module, pendingModules[module].value);
 	}
@@ -305,15 +336,18 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	}
 
 	// ---------------------------------------------------------------------------------------
+	// account freeze and unfreeze management
 
+	/// @inheritdoc IStablecoin
 	function setFreeze(address account, string calldata message) external onlyCurator {
-		if (unfreeze[account] > 0) revert ErrorsLib.AlreadySet();
+		if (unfreeze[account] != 0) revert ErrorsLib.AlreadySet();
 		unfreeze[account] = block.timestamp;
 		emit EventsLib.SetFreeze(_msgSender(), account, message);
 	}
 
 	// ---------------------------------------------------------------------------------------
 
+	/// @inheritdoc IStablecoin
 	function setUnfreeze(address account, string calldata message) external onlyCuratorOrGuardian {
 		if (unfreeze[account] == 0) revert ErrorsLib.AlreadySet();
 		if (pendingUnfreeze[account].validAt != 0) revert ErrorsLib.AlreadyPending();
@@ -322,12 +356,14 @@ contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 		emit EventsLib.SubmitUnfreeze(_msgSender(), account, message, timelock * 2);
 	}
 
+	/// @inheritdoc IStablecoin
 	function revokePendingUnfreeze(address account, string calldata message) external onlyCuratorOrGuardian {
 		if (pendingUnfreeze[account].validAt == 0) revert ErrorsLib.NoPendingValue();
 		emit EventsLib.RevokeUnfreeze(_msgSender(), account, message);
 		delete pendingUnfreeze[account];
 	}
 
+	/// @inheritdoc IStablecoin
 	function acceptUnfreeze(address account) external afterTimelock(pendingUnfreeze[account].validAt) {
 		unfreeze[account] = 0;
 		emit EventsLib.SetUnfreeze(_msgSender(), account);
