@@ -15,6 +15,10 @@ import {PendingLib, PendingUint192, PendingAddress} from './libraries/PendingLib
 
 import {IStablecoin, IERC20} from './IStablecoin.sol';
 
+/// @title Stablecoin
+/// @author @samclassix <samclassix@proton.me>, @wrytlabs <wrytlabs@proton.me>
+/// @notice A stablecoin implementation built on top of Morpho, utilizing a role-based access control system
+/// with curator and guardian roles for secure management and governance.
 contract Stablecoin is IStablecoin, ERC20, ERC20Permit, ERC1363 {
 	using Math for uint256;
 	using SafeERC20 for ERC20;

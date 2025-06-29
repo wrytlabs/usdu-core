@@ -8,7 +8,7 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 /// @title RewardRouterV1 - Non-custodial Router
-/// @author @samclassix <samclassix@proton.me>
+/// @author @samclassix <samclassix@proton.me>, @wrytlabs <wrytlabs@proton.me>
 /// @notice This contract acts purely as a non-custodial router, helping connect on-chain deposits with the off-chain reward program.
 contract RewardRouterV1 is Ownable {
 	using Math for uint256;

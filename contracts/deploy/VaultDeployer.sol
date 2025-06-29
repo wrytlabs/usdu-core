@@ -26,12 +26,7 @@ contract VaultDeployer {
 	IMetaMorphoV1_1 immutable staked;
 
 	MorphoAdapterV1 immutable adapter;
-
 	RewardRouterV1 immutable reward;
-
-	// GuardianV1 immutable guardian;
-
-	// CurveAdapterV1 immutable curve;
 
 	constructor(IMorpho _morpho, IMetaMorphoV1_1Factory _factory, address _alloc, address _urd, address _curator) {
 		// set curator
@@ -80,20 +75,13 @@ contract VaultDeployer {
 		address[5] memory receivers = [address(reward), address(0), address(0), address(0), address(0)];
 		uint32[5] memory weights = [uint32(1000), uint32(0), uint32(0), uint32(0), uint32(0)];
 
-		adapter = new MorphoAdapterV1(stable, core, staked, receivers, weights);
-
-		// set up curve adapter
-		// curve = new CurveAdapterV1(stable, ...);
-
 		// set up modules
+		adapter = new MorphoAdapterV1(stable, core, staked, receivers, weights);
 		stable.setModule(address(adapter), type(uint256).max, 'MorphoAdapterV1');
-		// stable.setModule(address(curve), type(uint256).max, 'CurveAdapterV1');
-
-		// deploy guardian
 
 		// prepare stable for curator
 		stable.setCurator(curator); // no timelock, new curator needs to accept role
-		// stable.setTimelock(7 days); // will apply now for further steps
+		stable.setTimelock(7 days); // will apply now for further steps
 
 		// prepare vaults for curator, needs 2nd step to accept new role
 		core.transferOwnership(curator);

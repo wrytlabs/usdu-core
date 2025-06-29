@@ -39,7 +39,7 @@ contract MorphoAdapterV1 is Context {
 
 	error ForwardCallFailed(address forwardedTo);
 	error MismatchLength(uint256 receivers, uint256 weights);
-	error NothingToReconcile(uint256 balance);
+	error NothingToReconcile(uint256 assets, uint256 minted);
 
 	// ---------------------------------------------------------------------------------------
 
@@ -58,21 +58,21 @@ contract MorphoAdapterV1 is Context {
 		weights = _weights;
 	}
 
-	// ---------------------------------------------------------------------------------------
+	// // ---------------------------------------------------------------------------------------
 
-	// TODO: needs a guardian step before applying ???
+	// // TODO: needs a guardian step before applying ???
 
-	function forwardToCore(bytes calldata data) external onlyCurator returns (bytes memory) {
-		(bool success, bytes memory result) = address(core).call(data);
-		if (!success) revert ForwardCallFailed(address(core));
-		return result;
-	}
+	// function forwardToCore(bytes calldata data) external onlyCurator returns (bytes memory) {
+	// 	(bool success, bytes memory result) = address(core).call(data);
+	// 	if (!success) revert ForwardCallFailed(address(core));
+	// 	return result;
+	// }
 
-	function forwardToStaked(bytes calldata data) external onlyCurator returns (bytes memory) {
-		(bool success, bytes memory result) = address(staked).call(data);
-		if (!success) revert ForwardCallFailed(address(staked));
-		return result;
-	}
+	// function forwardToStaked(bytes calldata data) external onlyCurator returns (bytes memory) {
+	// 	(bool success, bytes memory result) = address(staked).call(data);
+	// 	if (!success) revert ForwardCallFailed(address(staked));
+	// 	return result;
+	// }
 
 	// ---------------------------------------------------------------------------------------
 
@@ -159,7 +159,7 @@ contract MorphoAdapterV1 is Context {
 		return core.convertToAssets(assetsFromStaked);
 	}
 
-	function reconcile() public {
+	function reconcile() external {
 		_reconcile(convertToAssets(), false);
 	}
 
@@ -174,12 +174,12 @@ contract MorphoAdapterV1 is Context {
 
 			_distribute(mintToReconcile);
 			return mintToReconcile;
-		}
-
-		if (!allowPassing) {
-			revert NothingToReconcile(assets);
 		} else {
-			return 0;
+			if (allowPassing) {
+				return 0;
+			} else {
+				revert NothingToReconcile(assets, totalMinted);
+			}
 		}
 	}
 
