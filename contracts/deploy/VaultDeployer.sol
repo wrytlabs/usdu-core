@@ -13,25 +13,20 @@ import {MorphoAdapterV1} from '../morpho/MorphoAdapterV1.sol';
 import {RewardRouterV1} from '../morpho/RewardRouterV1.sol';
 
 contract VaultDeployer {
-	IMetaMorphoV1_1Factory immutable vaultFactory;
-	IMorpho immutable morpho;
-	address immutable alloc;
-	address immutable urd;
+	IMetaMorphoV1_1Factory public immutable vaultFactory;
+	IMorpho public immutable morpho;
+	address public immutable alloc;
+	address public immutable urd;
 
-	address immutable curator;
+	Stablecoin public immutable stable;
 
-	Stablecoin immutable stable;
+	IMetaMorphoV1_1 public immutable core;
+	IMetaMorphoV1_1 public immutable staked;
 
-	IMetaMorphoV1_1 immutable core;
-	IMetaMorphoV1_1 immutable staked;
-
-	MorphoAdapterV1 immutable adapter;
-	RewardRouterV1 immutable reward;
+	MorphoAdapterV1 public immutable adapter;
+	RewardRouterV1 public immutable reward;
 
 	constructor(IMorpho _morpho, IMetaMorphoV1_1Factory _factory, address _alloc, address _urd, address _curator) {
-		// set curator
-		curator = _curator;
-
 		// deploy stablecoin
 		stable = new Stablecoin('USDU', 'USDU', address(this));
 
@@ -80,11 +75,11 @@ contract VaultDeployer {
 		stable.setModule(address(adapter), type(uint256).max, 'MorphoAdapterV1');
 
 		// prepare stable for curator
-		stable.setCurator(curator); // no timelock, new curator needs to accept role
+		stable.setCurator(_curator); // no timelock, new curator needs to accept role
 		stable.setTimelock(7 days); // will apply now for further steps
 
 		// prepare vaults for curator, needs 2nd step to accept new role
-		core.transferOwnership(curator);
-		staked.transferOwnership(curator);
+		core.transferOwnership(_curator);
+		staked.transferOwnership(_curator);
 	}
 }

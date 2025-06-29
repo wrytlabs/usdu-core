@@ -61,6 +61,12 @@ const config: HardhatUserConfig = {
 			accounts: [wallet.privateKey],
 			timeout: 50_000,
 		},
+		hardhat: {
+			forking: {
+				url: `https://eth-mainnet.g.alchemy.com/v2/${alchemy}`,
+				blockNumber: 22810450,
+			},
+		},
 		tenderly: {
 			url: process.env.TENDERLY_RPC_URL,
 			chainId: 42069,

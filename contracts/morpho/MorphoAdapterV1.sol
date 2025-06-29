@@ -8,6 +8,7 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import {Stablecoin} from '../stablecoin/Stablecoin.sol';
+import {ErrorsLib} from '../stablecoin/libraries/ErrorsLib.sol';
 
 import {IMetaMorphoV1_1} from './helpers/IMetaMorphoV1_1.sol';
 
@@ -27,9 +28,16 @@ contract MorphoAdapterV1 is Context {
 	uint32[5] weights;
 	uint256 totalWeights;
 
+	address[5] pendingReceivers;
+	uint32[5] pendingWeights;
+	uint256 pendingValidAt;
+
 	// ---------------------------------------------------------------------------------------
 
-	event SetDistribution(uint256 length, uint256 totalWeights);
+	event SubmitDistribution(address indexed caller, address[5] receivers, uint32[5] weights, uint256 timelock);
+	event RevokeDistribution(address indexed caller);
+	event SetDistribution(address indexed caller);
+
 	event Deposit(uint256 amount, uint256 sharesCore, uint256 sharesStaked, uint256 totalMinted);
 	event Redeem(uint256 amount, uint256 sharesCore, uint256 sharesStaked, uint256 totalMinted);
 	event Revenue(uint256 amount, uint256 totalRevenue, uint256 totalMinted);
@@ -48,6 +56,17 @@ contract MorphoAdapterV1 is Context {
 		_;
 	}
 
+	modifier onlyCuratorOrGuardian() {
+		stable.verifyCuratorOrGuardian(_msgSender());
+		_;
+	}
+
+	modifier afterTimelock(uint256 validAt) {
+		if (validAt == 0) revert ErrorsLib.NoPendingValue();
+		if (block.timestamp < validAt) revert ErrorsLib.TimelockNotElapsed();
+		_;
+	}
+
 	// ---------------------------------------------------------------------------------------
 
 	constructor(Stablecoin _stable, IMetaMorphoV1_1 _core, IMetaMorphoV1_1 _staked, address[5] memory _receivers, uint32[5] memory _weights) {
@@ -58,47 +77,56 @@ contract MorphoAdapterV1 is Context {
 		weights = _weights;
 	}
 
-	// // ---------------------------------------------------------------------------------------
-
-	// // TODO: needs a guardian step before applying ???
-
-	// function forwardToCore(bytes calldata data) external onlyCurator returns (bytes memory) {
-	// 	(bool success, bytes memory result) = address(core).call(data);
-	// 	if (!success) revert ForwardCallFailed(address(core));
-	// 	return result;
-	// }
-
-	// function forwardToStaked(bytes calldata data) external onlyCurator returns (bytes memory) {
-	// 	(bool success, bytes memory result) = address(staked).call(data);
-	// 	if (!success) revert ForwardCallFailed(address(staked));
-	// 	return result;
-	// }
-
 	// ---------------------------------------------------------------------------------------
-
-	// TODO: needs a guardian step before applying
 
 	function setDistribution(address[5] calldata _receivers, uint32[5] calldata _weights) external onlyCurator {
 		if (_receivers.length != _weights.length) revert MismatchLength(_receivers.length, _weights.length);
+		if (pendingValidAt != 0) revert ErrorsLib.AlreadyPending();
 
+		if (receivers[0] == address(0)) {
+			_setDistribution(_receivers, _weights);
+		} else {
+			pendingReceivers = _receivers;
+			pendingWeights = _weights;
+			pendingValidAt = block.timestamp + stable.timelock();
+			emit SubmitDistribution(_msgSender(), _receivers, _weights, pendingValidAt);
+		}
+	}
+
+	function revokePendingDistribution() external onlyCuratorOrGuardian {
+		if (pendingValidAt == 0) revert ErrorsLib.NoPendingValue();
+		emit RevokeDistribution(_msgSender());
+		_cleanUpPending();
+	}
+
+	function applyDistribution() external afterTimelock(pendingValidAt) {
+		_setDistribution(pendingReceivers, pendingWeights);
+	}
+
+	function _setDistribution(address[5] memory _receivers, uint32[5] memory _weights) internal {
 		// reset totalWeights
 		totalWeights = 0;
 
 		// update total weight
-		for (uint32 i = 0; i < receivers.length; i++) {
-			totalWeights += weights[i];
+		for (uint32 i = 0; i < _receivers.length; i++) {
+			totalWeights += _weights[i];
 		}
 
 		// update distribution
 		receivers = _receivers;
 		weights = _weights;
+
+		// emit event
+		emit SetDistribution(_msgSender());
+
+		_cleanUpPending();
 	}
 
-	function revokePendingDistribution() external {}
-
-	function applyDistribution() external {}
-
-	function _setDistribution() internal {}
+	function _cleanUpPending() internal {
+		delete pendingReceivers;
+		delete pendingWeights;
+		delete pendingValidAt;
+	}
 
 	// ---------------------------------------------------------------------------------------
 
@@ -129,18 +157,21 @@ contract MorphoAdapterV1 is Context {
 		core.forceApprove(address(core), sharesCore);
 		uint256 amount = core.redeem(sharesCore, address(this), address(this));
 
-		// reconcile, removing assets keeps accounting accurate, triggers "accrueInterest" in attached markets
-		uint256 _convertToAssets = convertToAssets();
-		_reconcile(_convertToAssets + amount, true);
+		// reconcile, triggers `_accruedFeeAndAssets` in vault
+		_reconcile(totalAssets() + amount, true);
 
 		// reduce minted amount
 		if (totalMinted > amount) {
 			stable.burn(amount);
 			totalMinted -= amount;
 		} else {
-			stable.burn(totalMinted);
-			totalMinted = 0;
+			// burn existing tokens, if available
+			if (totalMinted > 0) {
+				stable.burn(totalMinted);
+				totalMinted = 0;
+			}
 
+			// distribute remaining balance
 			uint256 bal = stable.balanceOf(address(this));
 			if (bal > 0) {
 				_distribute(bal);
@@ -152,15 +183,14 @@ contract MorphoAdapterV1 is Context {
 
 	// ---------------------------------------------------------------------------------------
 
-	// TODO: does this trigger "accrueInterest" in attached markets?
-	// still if not, accounting would be just deplayed
-	function convertToAssets() public view returns (uint256) {
+	function totalAssets() public view returns (uint256) {
+		// this will use `_accruedFeeAndAssets`
 		uint256 assetsFromStaked = staked.convertToAssets(staked.balanceOf(address(this)));
 		return core.convertToAssets(assetsFromStaked);
 	}
 
 	function reconcile() external {
-		_reconcile(convertToAssets(), false);
+		_reconcile(totalAssets(), false);
 	}
 
 	function _reconcile(uint256 assets, bool allowPassing) internal returns (uint256) {

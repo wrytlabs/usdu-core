@@ -46,13 +46,29 @@ library EventsLib {
 
 	// ---------------------------------------------------------------------------------------
 
+	/// @notice Emitted when an account is frozen by the curator.
+	/// @param caller The address that triggered the freeze.
+	/// @param account The address being frozen.
+	/// @param message A message explaining the reason for freezing.
 	event SetFreeze(address indexed caller, address indexed account, string message);
 
 	// ---------------------------------------------------------------------------------------
 
+	/// @notice Emitted when an unfreeze request is submitted.
+	/// @param caller The address that submitted the unfreeze request.
+	/// @param account The address requested to be unfrozen.
+	/// @param message A message explaining the reason for unfreezing.
+	/// @param timelock The timestamp after which the unfreeze can be accepted.
 	event SubmitUnfreeze(address indexed caller, address indexed account, string message, uint256 timelock);
 
+	/// @notice Emitted when a pending unfreeze request is revoked.
+	/// @param caller The address that revoked the unfreeze request.
+	/// @param account The address whose unfreeze was revoked.
+	/// @param message A message explaining the reason for revocation.
 	event RevokeUnfreeze(address indexed caller, address indexed account, string message);
 
+	/// @notice Emitted when an unfreeze request is accepted and finalized.
+	/// @param caller The address that finalized the unfreeze.
+	/// @param account The address that was unfrozen.
 	event SetUnfreeze(address indexed caller, address indexed account);
 }

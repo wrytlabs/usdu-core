@@ -84,13 +84,13 @@ interface IStablecoin is IERC20 {
 
 	/// @notice Sets a new curator for the contract.
 	/// @dev Callable only by the current curator.
-	/// @dev Applies a timelock that is twice as long
 	/// @param newCurator The address to assign as the new curator.
 	/// @custom:role onlyCurator
 	function setCurator(address newCurator) external;
 
 	/// @notice Publicly initiates a curator change by paying a fee.
 	/// @dev Caller must pay `fee`, which must be at least `ConstantsLib.PUBLIC_FEE * 10`.
+	/// @dev Applies a timelock that is twice as long
 	/// @param newCurator The address to be proposed as the new curator.
 	/// @param fee The fee amount submitted with the transaction.
 	/// @custom:rule claimPublicFee(fee, ConstantsLib.PUBLIC_FEE * 10)
@@ -147,7 +147,7 @@ interface IStablecoin is IERC20 {
 
 	/// @notice Proposes a new module with an expiration time and message.
 	/// @dev Callable only by the curator.
-	/// @param module The address of the module to add.
+	/// @param module The address of the module to config.
 	/// @param expiredAt The timestamp when the module should expire.
 	/// @param message A message describing the module purpose or context.
 	/// @custom:role onlyCurator
@@ -156,7 +156,7 @@ interface IStablecoin is IERC20 {
 	/// @notice Publicly proposes a new module by paying a fee.
 	/// @dev Requires a fee at least equal to `ConstantsLib.PUBLIC_FEE`.
 	/// @dev Applies a timelock that is twice as long
-	/// @param module The address of the module to add.
+	/// @param module The address of the module to config.
 	/// @param expiredAt The timestamp when the module should expire.
 	/// @param message A message describing the module purpose or context.
 	/// @param fee The fee amount submitted with the transaction.

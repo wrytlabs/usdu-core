@@ -9,7 +9,3 @@ export * from './address.types';
 export * from './abis/AccessControl';
 export * from './abis/IAccessControl';
 export * from './abis/Ownable';
-
-// deployment params
-export * as MembershipParams from '../ignition/params/Membership';
-export * as MembershipFactoryParams from '../ignition/params/MembershipFactory';

@@ -6,7 +6,7 @@ import { ADDRESS } from '../exports/address.config';
 import { mainnet } from 'viem/chains';
 import { parseEther } from 'viem';
 
-describe('Deploy Stablecoin', function () {
+describe('Deploy VaultDeployer', function () {
 	let vaultDeployer: VaultDeployer;
 	let stable: Stablecoin;
 
@@ -39,15 +39,22 @@ describe('Deploy Stablecoin', function () {
 
 		adapter = await ethers.getContractAt('MorphoAdapterV1', await vaultDeployer.adapter());
 		reward = await ethers.getContractAt('RewardRouterV1', await vaultDeployer.reward());
-
-		await stable.acceptCurator();
-		await core.acceptOwnership();
-		await staked.acceptOwnership();
 	});
 
 	describe('Deployment Sequence and Checks', function () {
-		it('Should correctly ...', async function () {
-			// await adapter.connect(curator).deposit(parseEther('1000000'));
+		it('Should correctly accept acceptOwnership of stable', async function () {
+			await stable.acceptCurator();
+			expect(await stable.curator()).to.be.equal(curator.address);
+		});
+
+		it('Should correctly accept acceptOwnership of core', async function () {
+			await core.acceptOwnership();
+			expect(await core.owner()).to.be.equal(curator.address);
+		});
+
+		it('Should correctly accept acceptOwnership of staked', async function () {
+			await staked.acceptOwnership();
+			expect(await staked.owner()).to.be.equal(curator.address);
 		});
 	});
 });
