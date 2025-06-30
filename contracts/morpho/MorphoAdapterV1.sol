@@ -17,20 +17,20 @@ contract MorphoAdapterV1 is Context {
 	using SafeERC20 for Stablecoin;
 	using SafeERC20 for IMetaMorphoV1_1;
 
-	Stablecoin immutable stable;
-	IMetaMorphoV1_1 immutable core;
-	IMetaMorphoV1_1 immutable staked;
+	Stablecoin public immutable stable;
+	IMetaMorphoV1_1 public immutable core;
+	IMetaMorphoV1_1 public immutable staked;
 
 	uint256 public totalMinted;
 	uint256 public totalRevenue;
 
-	address[5] receivers;
-	uint32[5] weights;
-	uint256 totalWeights;
+	address[5] public receivers;
+	uint32[5] public weights;
+	uint256 public totalWeights;
 
-	address[5] pendingReceivers;
-	uint32[5] pendingWeights;
-	uint256 pendingValidAt;
+	address[5] public pendingReceivers;
+	uint32[5] public pendingWeights;
+	uint256 public pendingValidAt;
 
 	// ---------------------------------------------------------------------------------------
 
@@ -69,12 +69,25 @@ contract MorphoAdapterV1 is Context {
 
 	// ---------------------------------------------------------------------------------------
 
-	constructor(Stablecoin _stable, IMetaMorphoV1_1 _core, IMetaMorphoV1_1 _staked, address[5] memory _receivers, uint32[5] memory _weights) {
+	constructor(
+		Stablecoin _stable,
+		IMetaMorphoV1_1 _core,
+		IMetaMorphoV1_1 _staked,
+		address[5] memory _receivers,
+		uint32[5] memory _weights
+	) {
 		stable = _stable;
 		core = _core;
 		staked = _staked;
-		receivers = _receivers;
-		weights = _weights;
+		_setDistribution(_receivers, _weights);
+	}
+
+	// ---------------------------------------------------------------------------------------
+
+	function totalAssets() public view returns (uint256) {
+		// this will use `_accruedFeeAndAssets`
+		uint256 assetsFromStaked = staked.convertToAssets(staked.balanceOf(address(this)));
+		return core.convertToAssets(assetsFromStaked);
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -149,6 +162,9 @@ contract MorphoAdapterV1 is Context {
 	// ---------------------------------------------------------------------------------------
 
 	function redeem(uint256 sharesStaked) external onlyCurator {
+		// reconcile, triggers `_accruedFeeAndAssets` in vault
+		_reconcile(totalAssets(), true);
+
 		// approve staked shares for redeem from staked vault
 		staked.forceApprove(address(staked), sharesStaked);
 		uint256 sharesCore = staked.redeem(sharesStaked, address(this), address(this));
@@ -157,11 +173,8 @@ contract MorphoAdapterV1 is Context {
 		core.forceApprove(address(core), sharesCore);
 		uint256 amount = core.redeem(sharesCore, address(this), address(this));
 
-		// reconcile, triggers `_accruedFeeAndAssets` in vault
-		_reconcile(totalAssets() + amount, true);
-
 		// reduce minted amount
-		if (totalMinted > amount) {
+		if (totalMinted >= amount) {
 			stable.burn(amount);
 			totalMinted -= amount;
 		} else {
@@ -171,7 +184,7 @@ contract MorphoAdapterV1 is Context {
 				totalMinted = 0;
 			}
 
-			// distribute remaining balance
+			// fallback, distribute remaining balance
 			uint256 bal = stable.balanceOf(address(this));
 			if (bal > 0) {
 				_distribute(bal);
@@ -182,12 +195,6 @@ contract MorphoAdapterV1 is Context {
 	}
 
 	// ---------------------------------------------------------------------------------------
-
-	function totalAssets() public view returns (uint256) {
-		// this will use `_accruedFeeAndAssets`
-		uint256 assetsFromStaked = staked.convertToAssets(staked.balanceOf(address(this)));
-		return core.convertToAssets(assetsFromStaked);
-	}
 
 	function reconcile() external {
 		_reconcile(totalAssets(), false);
@@ -216,8 +223,7 @@ contract MorphoAdapterV1 is Context {
 	// ---------------------------------------------------------------------------------------
 
 	function _distribute(uint256 amount) internal {
-		uint256 len = receivers.length;
-		for (uint256 i = 0; i < len; i++) {
+		for (uint256 i = 0; i < 5; i++) {
 			address receiver = receivers[i];
 			uint256 weight = weights[i];
 			uint256 split;
@@ -225,8 +231,8 @@ contract MorphoAdapterV1 is Context {
 			// end distribution
 			if (receiver == address(0)) return;
 
-			// last item?
-			if (i == len - 1) {
+			// last item reached (index: 5 - 1 = 4) OR next receiver is zeroAddress
+			if (i == 4 || (i < 4 && receivers[i + 1] == address(0))) {
 				// distribute remainings, eliminating rounding issues
 				split = stable.balanceOf(address(this));
 			} else {

@@ -66,6 +66,10 @@ const config: HardhatUserConfig = {
 				url: `https://eth-mainnet.g.alchemy.com/v2/${alchemy}`,
 				blockNumber: 22810450,
 			},
+			gas: 'auto',
+			gasPrice: 'auto',
+			initialBaseFeePerGas: 100000000,
+			gasMultiplier: 2,
 		},
 		tenderly: {
 			url: process.env.TENDERLY_RPC_URL,

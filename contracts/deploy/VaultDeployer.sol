@@ -51,17 +51,27 @@ contract VaultDeployer {
 		staked.setSkimRecipient(_curator);
 		staked.setIsAllocator(alloc, true);
 
-		// set up markets
-		morpho.createMarket(MarketParams(address(stable), address(0), address(0), address(0), 0));
-		morpho.createMarket(MarketParams(address(core), address(0), address(0), address(0), 0));
+		// prepare markets
+		MarketParams memory coreIdleMarket = MarketParams(address(stable), address(0), address(0), address(0), 0);
+		MarketParams memory stakedIdleMarket = MarketParams(address(core), address(0), address(0), address(0), 0);
+		Id[] memory idCore = new Id[](1);
+		idCore[0] = getMarketId(coreIdleMarket);
+		Id[] memory idStaked = new Id[](1);
+		idStaked[0] = getMarketId(stakedIdleMarket);
+
+		// create markets
+		morpho.createMarket(coreIdleMarket);
+		morpho.createMarket(stakedIdleMarket);
 
 		// attach stable idle market to core vault
-		core.submitCap(MarketParams(address(stable), address(0), address(0), address(0), 0), 100_000_000 ether);
-		core.acceptCap(MarketParams(address(stable), address(0), address(0), address(0), 0));
+		core.submitCap(coreIdleMarket, 100_000_000 ether);
+		core.acceptCap(coreIdleMarket);
+		core.setSupplyQueue(idCore);
 
 		// attach staked idle market to staked vault
-		staked.submitCap(MarketParams(address(core), address(0), address(0), address(0), 0), 100_000_000 ether);
-		staked.acceptCap(MarketParams(address(core), address(0), address(0), address(0), 0));
+		staked.submitCap(stakedIdleMarket, 100_000_000 ether);
+		staked.acceptCap(stakedIdleMarket);
+		staked.setSupplyQueue(idStaked);
 
 		// set up reward helper
 		reward = new RewardRouterV1(urd, _curator);
@@ -81,5 +91,20 @@ contract VaultDeployer {
 		// prepare vaults for curator, needs 2nd step to accept new role
 		core.transferOwnership(_curator);
 		staked.transferOwnership(_curator);
+	}
+
+	function getMarketId(MarketParams memory marketParams) public pure returns (Id) {
+		return
+			Id.wrap(
+				keccak256(
+					abi.encode(
+						marketParams.loanToken,
+						marketParams.collateralToken,
+						marketParams.oracle,
+						marketParams.irm,
+						marketParams.lltv
+					)
+				)
+			);
 	}
 }
