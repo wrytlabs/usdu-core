@@ -19,6 +19,9 @@ export type ChainAddressMainnet = {
 	chainId: typeof mainnet.id;
 	chainSelector: string;
 
+	// curator
+	curator: Address;
+
 	// morpho related
 	morphoBlue: Address;
 	morphoIrm: Address;

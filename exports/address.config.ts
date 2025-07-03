@@ -7,6 +7,9 @@ export const ADDRESS: ChainAddressMap = {
 		chainId: 1,
 		chainSelector: '5009297550715157269',
 
+		// curator
+		curator: '0x9fe66037c44236c87D9Ac8345F489b4413fDFf06',
+
 		// morpho related
 		morphoBlue: '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb',
 		morphoIrm: '0x870aC11D48B15DB9a138Cf899d20F13F79Ba00BC',

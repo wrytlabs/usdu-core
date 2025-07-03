@@ -10,7 +10,7 @@ import {IMetaMorphoV1_1} from '../morpho/helpers/IMetaMorphoV1_1.sol';
 import {IMetaMorphoV1_1Factory} from '../morpho/helpers/IMetaMorphoV1_1Factory.sol';
 
 import {MorphoAdapterV1} from '../morpho/MorphoAdapterV1.sol';
-import {RewardRouterV1} from '../morpho/RewardRouterV1.sol';
+import {RewardRouterV0} from '../morpho/RewardRouterV0.sol';
 
 contract VaultDeployer {
 	IMetaMorphoV1_1Factory public immutable vaultFactory;
@@ -24,7 +24,7 @@ contract VaultDeployer {
 	IMetaMorphoV1_1 public immutable staked;
 
 	MorphoAdapterV1 public immutable adapter;
-	RewardRouterV1 public immutable reward;
+	RewardRouterV0 public immutable reward;
 
 	constructor(IMorpho _morpho, IMetaMorphoV1_1Factory _factory, address _alloc, address _urd, address _curator) {
 		// deploy stablecoin
@@ -74,7 +74,7 @@ contract VaultDeployer {
 		staked.setSupplyQueue(idStaked);
 
 		// set up reward helper
-		reward = new RewardRouterV1(stable, _curator);
+		reward = new RewardRouterV0(stable, _curator);
 
 		// set up morpho adapter and reward router
 		address[5] memory receivers = [address(reward), address(0), address(0), address(0), address(0)];
