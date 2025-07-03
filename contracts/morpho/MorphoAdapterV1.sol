@@ -238,7 +238,7 @@ contract MorphoAdapterV1 is Context {
 
 			// last item reached (index: 5 - 1 = 4) OR next receiver is zeroAddress
 			if (i == 4 || (i < 4 && receivers[i + 1] == address(0))) {
-				// distribute remainings, eliminating rounding issues
+				// distribute remainings, eliminating rounding or deposit issues
 				split = stable.balanceOf(address(this));
 			} else {
 				// distribute weighted split

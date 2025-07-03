@@ -312,23 +312,29 @@ describe('Deploy Stablecoin', function () {
 			await testToken.connect(user).approve(await morpho.getAddress(), collatealAmount);
 			await morpho.connect(user).supplyCollateral(market, collatealAmount, user, Buffer.from(''));
 			await morpho.connect(user).borrow(market, borrowAmount, 0, user, user);
-			await show();
+			// await show();
 
 			await evm_increaseTime(3600 * 24 * 200);
-			await show();
+			// await show();
 
 			await stable.connect(module).mintModule(module, parseEther('10000000'));
 			await stable.connect(module).approve(await core.getAddress(), parseEther('10000000'));
 			await core.connect(module).deposit(parseEther('10000000'), module);
-			await show();
+			// await show();
 
 			await evm_increaseTime(3600 * 24 * 10);
 			await adapter.connect(curator).redeem((await staked.balanceOf(await adapter.getAddress())) / 2n);
-			await show();
+			// await show();
 
 			await evm_increaseTime(3600 * 24 * 10);
 			await adapter.connect(curator).redeem(await staked.balanceOf(await adapter.getAddress()));
-			await show();
+			// await show();
+
+			await adapter.connect(curator).deposit(parseUnits('1', 18 + 6));
+			await evm_increaseTime(3600 * 24 * 10);
+
+			await stable.connect(module).mintModule(adapter, parseEther('10000'));
+			await adapter.connect(curator).redeem(await staked.balanceOf(await adapter.getAddress()));
 		});
 	});
 });
