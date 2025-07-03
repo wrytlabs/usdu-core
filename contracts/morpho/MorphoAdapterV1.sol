@@ -12,6 +12,11 @@ import {ErrorsLib} from '../stablecoin/libraries/ErrorsLib.sol';
 
 import {IMetaMorphoV1_1} from './helpers/IMetaMorphoV1_1.sol';
 
+/**
+ * @title MorphoAdapterV1
+ * @author @samclassix <samclassix@proton.me>, @wrytlabs <wrytlabs@proton.me>
+ * @notice This is an adapter for interacting with Morpho to mint liquidity straight into the market.
+ */
 contract MorphoAdapterV1 is Context {
 	using Math for uint256;
 	using SafeERC20 for Stablecoin;
@@ -178,7 +183,7 @@ contract MorphoAdapterV1 is Context {
 			stable.burn(amount);
 			totalMinted -= amount;
 		} else {
-			// burn existing tokens, if available
+			// fallback, burn existing totalMinted if available
 			if (totalMinted > 0) {
 				stable.burn(totalMinted);
 				totalMinted = 0;

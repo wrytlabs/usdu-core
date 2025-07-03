@@ -39,9 +39,10 @@ describe('Deploy Stablecoin', function () {
 
 	let curator: SignerWithAddress;
 	let user: SignerWithAddress;
+	let module: SignerWithAddress;
 
 	before(async function () {
-		[curator, user] = await ethers.getSigners();
+		[curator, user, module] = await ethers.getSigners();
 
 		morpho = await ethers.getContractAt('IMorpho', addr.morphoBlue);
 
@@ -282,5 +283,52 @@ describe('Deploy Stablecoin', function () {
 
 			*/
 		// });
+	});
+
+	describe('should try to find edge cases', async function () {
+		beforeEach(async function () {
+			await stable.connect(curator).setModule(module, 9999999999999, 'minter');
+			await evm_increaseTime(3600 * 24 * 7 + 1000);
+			await stable.acceptModule(module);
+
+			await stable.connect(module).mintModule(module, parseEther('1000000'));
+			await stable.connect(module).approve(await core.getAddress(), parseEther('1000000'));
+			await core.connect(module).deposit(parseEther('1000000'), module);
+		});
+
+		it('is the accounting correct and never falls back?', async function () {
+			const show = async () => {
+				console.log({
+					assets: await adapter.totalAssets(),
+					minted: await adapter.totalMinted(),
+					rev: await adapter.totalRevenue(),
+					market: await morpho.market(marketId),
+				});
+			};
+
+			const collatealAmount = parseUnits('1', 18 + 9); // @dev: somehow the price is around 1080 WTKN / Stable
+			const borrowAmount = parseUnits('28', 18 + 5);
+			await testToken.connect(user).mint(collatealAmount);
+			await testToken.connect(user).approve(await morpho.getAddress(), collatealAmount);
+			await morpho.connect(user).supplyCollateral(market, collatealAmount, user, Buffer.from(''));
+			await morpho.connect(user).borrow(market, borrowAmount, 0, user, user);
+			await show();
+
+			await evm_increaseTime(3600 * 24 * 200);
+			await show();
+
+			await stable.connect(module).mintModule(module, parseEther('10000000'));
+			await stable.connect(module).approve(await core.getAddress(), parseEther('10000000'));
+			await core.connect(module).deposit(parseEther('10000000'), module);
+			await show();
+
+			await evm_increaseTime(3600 * 24 * 10);
+			await adapter.connect(curator).redeem((await staked.balanceOf(await adapter.getAddress())) / 2n);
+			await show();
+
+			await evm_increaseTime(3600 * 24 * 10);
+			await adapter.connect(curator).redeem(await staked.balanceOf(await adapter.getAddress()));
+			await show();
+		});
 	});
 });

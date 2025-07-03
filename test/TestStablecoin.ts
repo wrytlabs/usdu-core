@@ -17,6 +17,11 @@ describe('Deploy Stablecoin', function () {
 	const expiredAt = 999999999999;
 	const publicFee = parseEther('10000');
 
+	const MIN_TIMELOCK = 60 * 60 * 24 * 7;
+	const MAX_TIMELOCK = 60 * 60 * 24 * 30;
+	const INCREASED_TIMELOCK = 60 * 60 * 24;
+	const DECREASED_TIMELOCK = 60 * 60 * 24;
+
 	beforeEach(async function () {
 		[curator, guardian, moduleInit, module, user] = await ethers.getSigners();
 
@@ -72,6 +77,16 @@ describe('Deploy Stablecoin', function () {
 
 			const freezeTime = await stable.unfreeze(user.address);
 			expect(freezeTime).to.be.gt(0);
+		});
+
+		it('should block transfers from freezed account', async function () {
+			await expect(stable.connect(curator).setFreeze(user.address, 'Suspicious activity'))
+				.to.emit(stable, 'SetFreeze')
+				.withArgs(curator.address, user.address, 'Suspicious activity');
+
+			await expect(stable.connect(user).transfer(curator, parseEther('1000')))
+				.to.be.revertedWithCustomError(stable, 'AccountFreezed')
+				.withArgs(user.address, await stable.unfreeze(user));
 		});
 
 		it('should revert if already frozen', async function () {
@@ -153,6 +168,18 @@ describe('Deploy Stablecoin', function () {
 	});
 
 	describe('setModulePublic', function () {
+		it('should revert with ERC20InsufficientBalance', async function () {
+			await expect(
+				stable.connect(guardian).setModulePublic(module.address, expiredAt, 'Add module with no fees to revert', publicFee)
+			).to.be.revertedWithCustomError(stable, 'ERC20InsufficientBalance');
+		});
+
+		it('should revert with ProposalFeeToLow', async function () {
+			await expect(stable.connect(guardian).setModulePublic(module.address, expiredAt, 'Add module with low fees', publicFee / 10n))
+				.to.be.revertedWithCustomError(stable, 'ProposalFeeToLow')
+				.withArgs(publicFee);
+		});
+
 		it('should have fee in wallet', async function () {
 			expect(await stable.balanceOf(user)).to.be.greaterThanOrEqual(publicFee);
 		});
@@ -248,6 +275,82 @@ describe('Deploy Stablecoin', function () {
 			await expect(stable.verifyValidModule(module))
 				.to.revertedWithCustomError(stable, 'NotValidModuleRole')
 				.withArgs(module.address);
+		});
+	});
+
+	describe('setTimelock', function () {
+		it('should immediately set a longer timelock', async function () {
+			await expect(stable.connect(curator).setTimelock(timelock + INCREASED_TIMELOCK))
+				.to.emit(stable, 'SetTimelock')
+				.withArgs(curator.address, timelock + INCREASED_TIMELOCK);
+
+			expect(await stable.timelock()).to.equal(timelock + INCREASED_TIMELOCK);
+		});
+
+		it('should create a pending timelock for lower value', async function () {
+			await stable.connect(curator).setTimelock(timelock + INCREASED_TIMELOCK);
+
+			await expect(stable.connect(curator).setTimelock(timelock))
+				.to.emit(stable, 'SubmitTimelock')
+				.withArgs(curator.address, timelock, timelock + INCREASED_TIMELOCK);
+
+			const pending = await stable.pendingTimelock();
+			expect(pending.validAt).to.be.gt(0);
+			expect(pending.value).to.equal(timelock);
+		});
+
+		it('should revert if same timelock is set', async function () {
+			await expect(stable.connect(curator).setTimelock(timelock)).to.be.revertedWithCustomError(stable, 'AlreadySet');
+		});
+
+		it('should revert if already pending', async function () {
+			await stable.connect(curator).setTimelock(timelock + INCREASED_TIMELOCK);
+			await stable.connect(curator).setTimelock(timelock);
+			await expect(stable.connect(curator).setTimelock(timelock)).to.be.revertedWithCustomError(stable, 'AlreadyPending');
+		});
+
+		it('should revert if above max', async function () {
+			await expect(stable.connect(curator).setTimelock(MAX_TIMELOCK + 1)).to.be.revertedWithCustomError(stable, 'AboveMaxTimelock');
+		});
+
+		it('should revert if below min', async function () {
+			await expect(stable.connect(curator).setTimelock(MIN_TIMELOCK - 1)).to.be.revertedWithCustomError(stable, 'BelowMinTimelock');
+		});
+	});
+
+	describe('revokePendingTimelock', function () {
+		beforeEach(async function () {
+			await stable.connect(curator).setTimelock(timelock + INCREASED_TIMELOCK);
+			await stable.connect(curator).setTimelock(timelock);
+		});
+
+		it('should revoke pending timelock', async function () {
+			await expect(stable.connect(guardian).revokePendingTimelock())
+				.to.emit(stable, 'RevokePendingTimelock')
+				.withArgs(guardian.address, timelock);
+
+			const pending = await stable.pendingTimelock();
+			expect(pending.validAt).to.equal(0);
+		});
+
+		it('should revert if no pending timelock', async function () {
+			await stable.connect(guardian).revokePendingTimelock();
+			await expect(stable.connect(guardian).revokePendingTimelock()).to.be.revertedWithCustomError(stable, 'NoPendingValue');
+		});
+	});
+
+	describe('acceptTimelock', function () {
+		beforeEach(async function () {
+			await stable.connect(curator).setTimelock(timelock + INCREASED_TIMELOCK);
+			await stable.connect(curator).setTimelock(timelock);
+			await ethers.provider.send('evm_increaseTime', [timelock + INCREASED_TIMELOCK + 1]);
+			await ethers.provider.send('evm_mine');
+		});
+
+		it('should accept pending timelock after timelock delay', async function () {
+			await expect(stable.connect(user).acceptTimelock()).to.emit(stable, 'SetTimelock').withArgs(user.address, timelock);
+
+			expect(await stable.timelock()).to.equal(timelock);
 		});
 	});
 });
