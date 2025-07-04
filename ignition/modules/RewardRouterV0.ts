@@ -6,28 +6,25 @@ import { mainnet } from 'viem/chains';
 import { getAddressFromChildIndex } from '../../helper/wallet';
 
 // config and select
-export const NAME: string = 'RewardsV1'; // <-- select smart contract
-export const FILE: string = 'RewardsV1'; // <-- name exported file
+export const NAME: string = 'RewardRouterV0'; // <-- select smart contract
+export const FILE: string = 'RewardRouterV0'; // <-- name exported file
 export const MOD: string = NAME + 'Module';
 console.log(NAME);
 
 // params
 export type DeploymentParams = {
+	stable: Address;
 	urd: Address;
-	owner: Address;
 };
 
 export const params: DeploymentParams = {
+	stable: ADDRESS[mainnet.id].usduStable,
 	urd: ADDRESS[mainnet.id].morphoURD,
-	owner: getAddressFromChildIndex(
-		process.env.DEPLOYER_SEED ?? '',
-		parseInt(process.env.DEPLOYER_SEED_INDEX ?? '0')
-	) as Address,
 };
 
 export type ConstructorArgs = [Address, Address];
 
-export const args: ConstructorArgs = [params.urd, params.owner];
+export const args: ConstructorArgs = [params.stable, params.urd];
 
 console.log('Imported Params:');
 console.log(params);

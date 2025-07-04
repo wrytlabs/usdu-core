@@ -1,36 +1,30 @@
 import { buildModule } from '@nomicfoundation/hardhat-ignition/modules';
 import { storeConstructorArgs } from '../../helper/store.args';
-import { Address } from 'viem';
 import { ADDRESS } from '../../exports/address.config';
+import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
-const addr = ADDRESS[mainnet.id];
+import { getAddressFromChildIndex } from '../../helper/wallet';
 
 // config and select
-export const NAME: string = 'VaultDeployer'; // <-- select smart contract
-export const FILE: string = 'VaultDeployer'; // <-- name exported file
+export const NAME: string = 'RewardsV1'; // <-- select smart contract
+export const FILE: string = 'RewardsV1'; // <-- name exported file
 export const MOD: string = NAME + 'Module';
 console.log(NAME);
 
 // params
 export type DeploymentParams = {
-	morpho: Address;
-	factory: Address;
-	allocator: Address;
 	urd: Address;
-	curator: Address;
+	owner: Address;
 };
 
 export const params: DeploymentParams = {
-	morpho: addr.morphoBlue,
-	factory: addr.morphoMetaMorphoFactory1_1,
-	allocator: addr.morphoPublicAllocator,
-	urd: addr.morphoURD,
-	curator: addr.curator,
+	urd: ADDRESS[mainnet.id].morphoURD,
+	owner: getAddressFromChildIndex(process.env.DEPLOYER_SEED ?? '', parseInt(process.env.DEPLOYER_SEED_INDEX ?? '0')) as Address,
 };
 
-export type ConstructorArgs = [Address, Address, Address, Address, Address];
+export type ConstructorArgs = [Address, Address];
 
-export const args: ConstructorArgs = [params.morpho, params.factory, params.allocator, params.urd, params.curator];
+export const args: ConstructorArgs = [params.urd, params.owner];
 
 console.log('Imported Params:');
 console.log(params);

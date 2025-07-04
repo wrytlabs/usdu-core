@@ -29,6 +29,14 @@ export type ChainAddressMainnet = {
 	morphoMetaMorphoFactory1_1: Address;
 	morphoPublicAllocator: Address;
 	morphoURD: Address;
+
+	// USDU related
+	usduDeployer: Address;
+	usduStable: Address;
+	usduCoreVault: Address;
+	usduStakedVault: Address;
+	usduRewardRouterV0: Address;
+	usduMorphoAdapterV1: Address;
 };
 
 export type ChainAddressPolygon = {

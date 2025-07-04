@@ -7,7 +7,7 @@ export const ADDRESS: ChainAddressMap = {
 		chainId: 1,
 		chainSelector: '5009297550715157269',
 
-		// curator
+		// curator / DAO
 		curator: '0x9fe66037c44236c87D9Ac8345F489b4413fDFf06',
 
 		// morpho related
@@ -17,6 +17,14 @@ export const ADDRESS: ChainAddressMap = {
 		morphoMetaMorphoFactory1_1: '0x1897A8997241C1cD4bD0698647e4EB7213535c24',
 		morphoPublicAllocator: '0xfd32fA2ca22c76dD6E550706Ad913FC6CE91c75D',
 		morphoURD: '0x330eefa8a787552DC5cAd3C3cA644844B1E61Ddb',
+
+		// vault deployer
+		usduDeployer: '0x745211a1e1a58b2b11b932855b30d411c31e25d5',
+		usduStable: '0xdde3ec717f220fc6a29d6a4be73f91da5b718e55',
+		usduCoreVault: '0xce22b5fb17ccbc0c5d87dc2e0df47dd71e3adc0a',
+		usduStakedVault: '0x0b5281e1fa7fc7c1f0890f311d5f04d55c0fd63c',
+		usduRewardRouterV0: '0xe1abbc0e434faadeadf69b3c6af25a930dec86c5', // <-- needs redeployment
+		usduMorphoAdapterV1: '0x6D6525D8e234D840b2699f7107f14fa0D6C62c42',
 	},
 	[polygon.id]: {
 		// identifier
