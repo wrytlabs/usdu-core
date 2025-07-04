@@ -1,1 +1,1 @@
-module.exports = ['0xdde3eC717f220Fc6A29D6a4Be73F91DA5b718e55', '0x9fe66037c44236c87D9Ac8345F489b4413fDFf06']; // error, using curator instead of URD
+module.exports = ["0xdde3ec717f220fc6a29d6a4be73f91da5b718e55","0x330eefa8a787552DC5cAd3C3cA644844B1E61Ddb"];

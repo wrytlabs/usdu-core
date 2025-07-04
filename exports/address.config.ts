@@ -23,7 +23,7 @@ export const ADDRESS: ChainAddressMap = {
 		usduStable: '0xdde3ec717f220fc6a29d6a4be73f91da5b718e55',
 		usduCoreVault: '0xce22b5fb17ccbc0c5d87dc2e0df47dd71e3adc0a',
 		usduStakedVault: '0x0b5281e1fa7fc7c1f0890f311d5f04d55c0fd63c',
-		usduRewardRouterV0: '0xe1abbc0e434faadeadf69b3c6af25a930dec86c5', // <-- needs redeployment
+		usduRewardRouterV0: '0xFA6d71ED122a7b3b494116317C2aC3B4E5269339', // <-- new deployment
 		usduMorphoAdapterV1: '0x6D6525D8e234D840b2699f7107f14fa0D6C62c42',
 	},
 	[polygon.id]: {

@@ -3,7 +3,6 @@ import { storeConstructorArgs } from '../../helper/store.args';
 import { ADDRESS } from '../../exports/address.config';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
-import { getAddressFromChildIndex } from '../../helper/wallet';
 
 // config and select
 export const NAME: string = 'RewardRouterV0'; // <-- select smart contract
