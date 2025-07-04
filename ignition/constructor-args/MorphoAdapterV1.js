@@ -1,0 +1,9 @@
+const { zeroAddress } = require('viem');
+
+module.exports = [
+	'0xdde3eC717f220Fc6A29D6a4Be73F91DA5b718e55',
+	'0xcE22b5Fb17ccbc0C5d87DC2e0dF47DD71E3AdC0a',
+	'0x0B5281e1fa7fC7c1f0890F311d5f04D55c0Fd63c',
+	['0xE1abBC0e434faadeadF69b3c6af25A930DEc86C5', zeroAddress, zeroAddress, zeroAddress, zeroAddress],
+	[1000, 0, 0, 0, 0],
+];

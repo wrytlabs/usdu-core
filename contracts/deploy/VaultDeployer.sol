@@ -74,7 +74,7 @@ contract VaultDeployer {
 		staked.setSupplyQueue(idStaked);
 
 		// set up reward helper
-		reward = new RewardRouterV0(stable, _curator);
+		reward = new RewardRouterV0(stable, _urd);
 
 		// set up morpho adapter and reward router
 		address[5] memory receivers = [address(reward), address(0), address(0), address(0), address(0)];
