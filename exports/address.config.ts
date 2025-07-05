@@ -25,6 +25,19 @@ export const ADDRESS: ChainAddressMap = {
 		usduStakedVault: '0x0b5281e1fa7fc7c1f0890f311d5f04d55c0fd63c',
 		usduRewardRouterV0: '0xFA6d71ED122a7b3b494116317C2aC3B4E5269339', // <-- new deployment
 		usduMorphoAdapterV1: '0x6D6525D8e234D840b2699f7107f14fa0D6C62c42',
+
+		// core vault market ids
+		marketIdUSDUIdle: '0x0F2C33F9074109B75B88617534E6AC6DFA8EBF97270C716782221A27CBF0D880',
+		marketIdUSDUUSDC: '0x60f855f6b8c6919c2a4f3ab5f367fc923e3172e6dc8f4e8b6c448eb2d43421a1',
+		marketIdUSDUWETH: '0xa6b5b5cc24a40900156a503afc6c898118b6d37ae545c2c144326fb95ac68e7a',
+
+		// cross market ids
+		marketIdUSDCUSDU: '0x6E988863B5C88C6A0038E07F346D79A941BA30E6BAB0E1267F3BCF72275D572A',
+		marketIdUSDCSUSDU: '0xAC3DB6E1B107B3239C6356F7018058BA66DFC8BB9D619F90A567CA58D33FFA36',
+
+		// curve pools
+		curveStableSwapNG_USDUUSDC: '0x771c91e699B4B23420de3F81dE2aA38C4041632b',
+		// https://www.curve.finance/dex/ethereum/pools/factory-stable-ng-506
 	},
 	[polygon.id]: {
 		// identifier

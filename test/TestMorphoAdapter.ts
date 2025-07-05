@@ -335,6 +335,9 @@ describe('Deploy Stablecoin', function () {
 
 			await stable.connect(module).mintModule(adapter, parseEther('10000'));
 			await adapter.connect(curator).redeem(await staked.balanceOf(await adapter.getAddress()));
+
+			expect(await core.balanceOf(await adapter.getAddress())).to.be.equal(0n);
+			expect(await staked.balanceOf(await adapter.getAddress())).to.be.equal(0n);
 		});
 	});
 });
