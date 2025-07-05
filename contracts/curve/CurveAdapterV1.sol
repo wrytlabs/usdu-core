@@ -15,7 +15,7 @@ contract CurveAdapterV1 {
 	using SafeERC20 for IStablecoin;
 
 	ICurveStableSwapNG public immutable pool;
-	IStablecoin public immutable stable; // TODO: might change to IERC20Metadata
+	IStablecoin public immutable stable;
 	IERC20Metadata public immutable coin;
 
 	uint256 public immutable idxS;
@@ -25,7 +25,13 @@ contract CurveAdapterV1 {
 
 	// ---------------------------------------------------------------------------------------
 
-	error NotUnderBalanced();
+	event AddLiquidity(address indexed sender, uint256 minted, uint256 totalMinted, uint256 sharesMinted, uint256 totalShares);
+	event RemoveLiquidity(address indexed sender, uint256 burned, uint256 totalMinted, uint256 sharesBurned, uint256 totalShares);
+
+	// ---------------------------------------------------------------------------------------
+
+	error ImbalancedVariant(uint256[] balances);
+	error NotProfitable();
 
 	// ---------------------------------------------------------------------------------------
 
@@ -35,22 +41,35 @@ contract CurveAdapterV1 {
 		uint256 _idxC // IERC20 coin
 	) {
 		pool = _pool;
+
+		require(_idxS < 8, 'idxS out of bounds for max 8 tokens');
+		require(_idxC < 8, 'idxC out of bounds for max 8 tokens');
+
 		idxS = _idxS;
 		idxC = _idxC;
+
 		stable = IStablecoin(_pool.coins(_idxS));
 		coin = IERC20Metadata(_pool.coins(_idxC));
 	}
 
-	function totalAssets() public view returns (uint256) {
-		return (pool.get_virtual_price() * pool.balanceOf(address(this))) / 1 ether;
+	// ---------------------------------------------------------------------------------------
+
+	function checkImbalance() public view returns (bool) {
+		uint256 correctedAmount = (pool.balances(idxC) * 1 ether) / 10 ** coin.decimals();
+		if (pool.balances(idxS) <= correctedAmount) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
-	function addLiquidity(uint256 amount) external returns (uint256) {
-		// check imbalance
-		if (pool.balances(idxS) > (pool.balances(idxC) * 1 ether) / 10 ** coin.decimals()) {
-			revert NotUnderBalanced();
-		}
+	function verifyImbalance(bool state) public view {
+		if (checkImbalance() != state) revert ImbalancedVariant(pool.get_balances());
+	}
 
+	// ---------------------------------------------------------------------------------------
+
+	function addLiquidity(uint256 amount, uint256 minShares) external returns (uint256) {
 		uint256 amountStable = (amount * 1 ether) / 10 ** coin.decimals();
 
 		// transfer coin token, needs approval
@@ -70,41 +89,72 @@ contract CurveAdapterV1 {
 		amounts[idxC] = amount;
 
 		// provide liquidity
-		uint256 shares = pool.add_liquidity(amounts, 0); // FIXME: calc LP min
+		uint256 shares = pool.add_liquidity(amounts, minShares * 2);
 
-		// return sender's portion of shares
-		uint256 portion = shares / 2;
-		pool.transfer(msg.sender, portion);
+		// check imbalance
+		verifyImbalance(true);
 
-		// emit event
+		// return sender's split of shares
+		uint256 split = shares / 2;
+		pool.transfer(msg.sender, split);
 
-		return portion;
+		// emit event and return share split
+		emit AddLiquidity(msg.sender, amountStable, totalMinted, split, pool.balanceOf(address(this)));
+		return split;
 	}
 
-	function removeLiquidity(uint256 shares) external returns (uint256) {
-		// check imbalance
-		if (pool.balances(idxS) < (pool.balances(idxC) * 1 ether) / 10 ** coin.decimals()) {
-			revert NotUnderBalanced();
-		}
+	// ---------------------------------------------------------------------------------------
 
+	function checkProfitability(uint256 beforeLP, uint256 afterLP, uint256 split) public view returns (bool) {
+		// FIXME: correct logic?
+		if ((afterLP * 1 ether) / beforeLP >= ((totalMinted - split) * 1 ether) / totalMinted) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	function verifyProfitability(uint256 beforeLP, uint256 afterLP, uint256 split) public view {
+		if (checkProfitability(beforeLP, afterLP, split) == false) revert NotProfitable();
+	}
+
+	function removeLiquidity(uint256 shares, uint256 minAmount) external returns (uint256) {
 		// transfer LP shares, needs approval
 		pool.transferFrom(msg.sender, address(this), shares);
 
-		// prepare amounts
-		uint256[] memory amounts;
-		amounts[0] = 0; // FIXME: calc min.
-		amounts[1] = 0; // FIXME: calc min.
+		// store pool LP balance before
+		uint256 beforeLP = pool.balanceOf(address(this));
 
-		uint256[] memory tokens = pool.remove_liquidity(shares * 2, amounts);
+		// remove both amount of the shares
+		uint256 amount = pool.remove_liquidity_one_coin(shares * 2, int128(int256(idxS)), minAmount * 2);
 
-		// burn
-		// _reconcile()
+		// check imbalance
+		verifyImbalance(false);
+
+		// check if in profit
+		uint256 afterLP = pool.balanceOf(address(this));
+		uint256 split = amount / 2;
+		verifyProfitability(beforeLP, afterLP, split);
+
+		// reconcile
+		uint256 bal = stable.balanceOf(address(this)) - split;
+		uint256 toBurn = totalMinted >= bal ? bal : totalMinted;
+		stable.burn(toBurn);
+		totalMinted -= toBurn;
 
 		// transfer
-		coin.transfer(msg.sender, tokens[idxC]);
+		stable.transfer(msg.sender, split);
 
-		// emit
+		// emit event and return share portion
+		emit RemoveLiquidity(msg.sender, toBurn, totalMinted, shares, afterLP);
+		return split;
+	}
 
-		return 0;
+	// ---------------------------------------------------------------------------------------
+	// redeem, onlyCurator
+
+	function redeem(uint256 shares, uint256 minAmount) external {
+		stable.verifyCurator(msg.sender);
+		pool.remove_liquidity_one_coin(shares, int128(int256(idxS)), minAmount);
 	}
 }
