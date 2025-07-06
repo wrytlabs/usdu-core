@@ -3,36 +3,75 @@ pragma solidity ^0.8.20;
 
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 
+import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
-import {IStablecoin} from '../stablecoin/Stablecoin.sol';
+import {Stablecoin} from '../stablecoin/Stablecoin.sol';
+import {ErrorsLib} from '../stablecoin/libraries/ErrorsLib.sol';
 import {ICurveStableSwapNG} from './helpers/ICurveStableSwapNG.sol';
 
-contract CurveAdapterV1 {
+/**
+ * @title CurveAdapterV1
+ * @author @samclassix <samclassix@proton.me>, @wrytlabs <wrytlabs@proton.me>
+ * @notice This is an adapter for interacting with ICurveStableSwapNG to mint liquidity straight into the pool under certain conditions.
+ */
+contract CurveAdapterV1 is Context {
 	using Math for uint256;
 	using SafeERC20 for IERC20Metadata;
-	using SafeERC20 for IStablecoin;
+	using SafeERC20 for Stablecoin;
 
 	ICurveStableSwapNG public immutable pool;
-	IStablecoin public immutable stable;
+	Stablecoin public immutable stable;
 	IERC20Metadata public immutable coin;
 
 	uint256 public immutable idxS;
 	uint256 public immutable idxC;
 
 	uint256 public totalMinted;
+	uint256 public totalRevenue;
+
+	address[5] public receivers;
+	uint32[5] public weights;
+	uint256 public totalWeights;
+
+	address[5] public pendingReceivers;
+	uint32[5] public pendingWeights;
+	uint256 public pendingValidAt;
 
 	// ---------------------------------------------------------------------------------------
 
+	event SubmitDistribution(address indexed caller, address[5] receivers, uint32[5] weights, uint256 timelock);
+	event RevokeDistribution(address indexed caller);
+	event SetDistribution(address indexed caller);
+
 	event AddLiquidity(address indexed sender, uint256 minted, uint256 totalMinted, uint256 sharesMinted, uint256 totalShares);
 	event RemoveLiquidity(address indexed sender, uint256 burned, uint256 totalMinted, uint256 sharesBurned, uint256 totalShares);
-	event Log(string message, uint256 value);
+	event Revenue(uint256 amount, uint256 totalRevenue, uint256 totalMinted);
+	event Distribution(address indexed receiver, uint256 amount, uint256 ratio);
 
 	// ---------------------------------------------------------------------------------------
 
 	error ImbalancedVariant(uint256[] balances);
 	error NotProfitable();
+
+	// ---------------------------------------------------------------------------------------
+
+	modifier onlyCurator() {
+		stable.verifyCurator(_msgSender());
+		_;
+	}
+
+	modifier onlyCuratorOrGuardian() {
+		stable.verifyCuratorOrGuardian(_msgSender());
+		_;
+	}
+
+	modifier afterTimelock(uint256 validAt) {
+		if (validAt == 0) revert ErrorsLib.NoPendingValue();
+		if (block.timestamp < validAt) revert ErrorsLib.TimelockNotElapsed();
+		_;
+	}
 
 	// ---------------------------------------------------------------------------------------
 
@@ -49,8 +88,58 @@ contract CurveAdapterV1 {
 		idxS = _idxS;
 		idxC = _idxC;
 
-		stable = IStablecoin(_pool.coins(_idxS));
+		stable = Stablecoin(_pool.coins(_idxS));
 		coin = IERC20Metadata(_pool.coins(_idxC));
+	}
+
+	// ---------------------------------------------------------------------------------------
+
+	function setDistribution(address[5] calldata _receivers, uint32[5] calldata _weights) external onlyCurator {
+		if (pendingValidAt != 0) revert ErrorsLib.AlreadyPending();
+
+		if (receivers[0] == address(0)) {
+			_setDistribution(_receivers, _weights);
+		} else {
+			pendingReceivers = _receivers;
+			pendingWeights = _weights;
+			pendingValidAt = block.timestamp + stable.timelock();
+			emit SubmitDistribution(_msgSender(), _receivers, _weights, pendingValidAt);
+		}
+	}
+
+	function revokePendingDistribution() external onlyCuratorOrGuardian {
+		if (pendingValidAt == 0) revert ErrorsLib.NoPendingValue();
+		emit RevokeDistribution(_msgSender());
+		_cleanUpPending();
+	}
+
+	function applyDistribution() external afterTimelock(pendingValidAt) {
+		_setDistribution(pendingReceivers, pendingWeights);
+	}
+
+	function _setDistribution(address[5] memory _receivers, uint32[5] memory _weights) internal {
+		// reset totalWeights
+		totalWeights = 0;
+
+		// update total weight
+		for (uint32 i = 0; i < _receivers.length; i++) {
+			totalWeights += _weights[i];
+		}
+
+		// update distribution
+		receivers = _receivers;
+		weights = _weights;
+
+		// emit event
+		emit SetDistribution(_msgSender());
+
+		_cleanUpPending();
+	}
+
+	function _cleanUpPending() internal {
+		delete pendingReceivers;
+		delete pendingWeights;
+		delete pendingValidAt;
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -74,7 +163,7 @@ contract CurveAdapterV1 {
 		uint256 amountStable = (amount * 1 ether) / 10 ** coin.decimals();
 
 		// transfer coin token, needs approval
-		coin.safeTransferFrom(msg.sender, address(this), amount);
+		coin.safeTransferFrom(_msgSender(), address(this), amount);
 
 		// mint the same amountStable in stables
 		stable.mintModule(address(this), amountStable);
@@ -97,10 +186,10 @@ contract CurveAdapterV1 {
 
 		// return sender's split of shares
 		uint256 split = shares / 2;
-		pool.transfer(msg.sender, split);
+		pool.transfer(_msgSender(), split);
 
 		// emit event and return share split
-		emit AddLiquidity(msg.sender, amountStable, totalMinted, split, pool.balanceOf(address(this)));
+		emit AddLiquidity(_msgSender(), amountStable, totalMinted, split, pool.balanceOf(address(this)));
 		return split;
 	}
 
@@ -125,7 +214,7 @@ contract CurveAdapterV1 {
 		uint256 beforeLP = pool.balanceOf(address(this));
 
 		// transfer LP shares from sender, needs approval
-		pool.transferFrom(msg.sender, address(this), shares);
+		pool.transferFrom(_msgSender(), address(this), shares);
 
 		// remove both amount of the shares
 		uint256 amount = pool.remove_liquidity_one_coin(shares * 2, int128(int256(idxS)), minAmount * 2);
@@ -143,10 +232,10 @@ contract CurveAdapterV1 {
 		uint256 toBurn = _reconcile(bal);
 
 		// transfer split to sender
-		stable.transfer(msg.sender, split);
+		stable.transfer(_msgSender(), split);
 
 		// emit event and return share portion
-		emit RemoveLiquidity(msg.sender, toBurn, totalMinted, shares, afterLP);
+		emit RemoveLiquidity(_msgSender(), toBurn, totalMinted, shares, afterLP);
 		return split;
 	}
 
@@ -154,7 +243,7 @@ contract CurveAdapterV1 {
 	// redeem, onlyCurator
 
 	function redeem(uint256 shares, uint256 minAmount) external {
-		stable.verifyCurator(msg.sender);
+		stable.verifyCurator(_msgSender());
 		pool.remove_liquidity_one_coin(shares, int128(int256(idxS)), minAmount);
 	}
 
@@ -165,5 +254,33 @@ contract CurveAdapterV1 {
 		stable.burn(toBurn);
 		totalMinted -= toBurn;
 		return toBurn;
+	}
+
+	// ---------------------------------------------------------------------------------------
+
+	function _distribute(uint256 amount) internal {
+		for (uint256 i = 0; i < 5; i++) {
+			address receiver = receivers[i];
+			uint256 weight = weights[i];
+			uint256 split;
+
+			// end distribution
+			if (receiver == address(0)) return;
+
+			// last item reached (index: 5 - 1 = 4) OR next receiver is zeroAddress
+			if (i == 4 || (i < 4 && receivers[i + 1] == address(0))) {
+				// distribute remainings, eliminating rounding or deposit issues
+				split = stable.balanceOf(address(this));
+			} else {
+				// distribute weighted split
+				split = (weight * amount) / totalWeights;
+			}
+
+			// distribute revenue split
+			stable.transfer(receiver, split);
+
+			// last weighted ratio might be inconsistant, due to remaining assets distribution
+			emit Distribution(receiver, split, (weight * 1 ether) / totalWeights);
+		}
 	}
 }
