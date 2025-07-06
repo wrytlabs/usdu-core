@@ -27,6 +27,7 @@ contract CurveAdapterV1 {
 
 	event AddLiquidity(address indexed sender, uint256 minted, uint256 totalMinted, uint256 sharesMinted, uint256 totalShares);
 	event RemoveLiquidity(address indexed sender, uint256 burned, uint256 totalMinted, uint256 sharesBurned, uint256 totalShares);
+	event Log(string message, uint256 value);
 
 	// ---------------------------------------------------------------------------------------
 
@@ -91,7 +92,7 @@ contract CurveAdapterV1 {
 		// provide liquidity
 		uint256 shares = pool.add_liquidity(amounts, minShares * 2);
 
-		// check imbalance
+		// verify imbalance
 		verifyImbalance(true);
 
 		// return sender's split of shares
@@ -106,8 +107,7 @@ contract CurveAdapterV1 {
 	// ---------------------------------------------------------------------------------------
 
 	function checkProfitability(uint256 beforeLP, uint256 afterLP, uint256 split) public view returns (bool) {
-		// FIXME: correct logic?
-		if ((afterLP * 1 ether) / beforeLP >= ((totalMinted - split) * 1 ether) / totalMinted) {
+		if (1 ether - ((afterLP * 1 ether) / beforeLP) <= (split * 1 ether) / totalMinted) {
 			return true;
 		} else {
 			return false;
@@ -118,31 +118,31 @@ contract CurveAdapterV1 {
 		if (checkProfitability(beforeLP, afterLP, split) == false) revert NotProfitable();
 	}
 
-	function removeLiquidity(uint256 shares, uint256 minAmount) external returns (uint256) {
-		// transfer LP shares, needs approval
-		pool.transferFrom(msg.sender, address(this), shares);
+	// ---------------------------------------------------------------------------------------
 
-		// store pool LP balance before
+	function removeLiquidity(uint256 shares, uint256 minAmount) external returns (uint256) {
+		// store LP balance
 		uint256 beforeLP = pool.balanceOf(address(this));
+
+		// transfer LP shares from sender, needs approval
+		pool.transferFrom(msg.sender, address(this), shares);
 
 		// remove both amount of the shares
 		uint256 amount = pool.remove_liquidity_one_coin(shares * 2, int128(int256(idxS)), minAmount * 2);
 
-		// check imbalance
+		// verify imbalance
 		verifyImbalance(false);
 
-		// check if in profit
+		// verify if in profit
 		uint256 afterLP = pool.balanceOf(address(this));
 		uint256 split = amount / 2;
 		verifyProfitability(beforeLP, afterLP, split);
 
 		// reconcile
 		uint256 bal = stable.balanceOf(address(this)) - split;
-		uint256 toBurn = totalMinted >= bal ? bal : totalMinted;
-		stable.burn(toBurn);
-		totalMinted -= toBurn;
+		uint256 toBurn = _reconcile(bal);
 
-		// transfer
+		// transfer split to sender
 		stable.transfer(msg.sender, split);
 
 		// emit event and return share portion
@@ -156,5 +156,14 @@ contract CurveAdapterV1 {
 	function redeem(uint256 shares, uint256 minAmount) external {
 		stable.verifyCurator(msg.sender);
 		pool.remove_liquidity_one_coin(shares, int128(int256(idxS)), minAmount);
+	}
+
+	// ---------------------------------------------------------------------------------------
+
+	function _reconcile(uint256 amount) internal returns (uint256) {
+		uint256 toBurn = totalMinted >= amount ? amount : totalMinted;
+		stable.burn(toBurn);
+		totalMinted -= toBurn;
+		return toBurn;
 	}
 }

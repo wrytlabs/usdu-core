@@ -24,6 +24,19 @@ describe('Deploy Stablecoin', function () {
 	const expiredAt = 999999999999;
 	const amount = '10000';
 
+	const showDetails = async function () {
+		console.log({
+			userUSDC: await usdc.balanceOf(user),
+			userUSDU: await stable.balanceOf(user),
+			userPool: await pool.balanceOf(user),
+			adapterMinted: await adapter.totalMinted(),
+			adapterUSDC: await usdc.balanceOf(adapter),
+			adapterUSDU: await stable.balanceOf(adapter),
+			adapterPool: await pool.balanceOf(adapter),
+			pool: await pool.get_balances(),
+		});
+	};
+
 	before(async function () {
 		[module, user] = await ethers.getSigners();
 
@@ -75,21 +88,6 @@ describe('Deploy Stablecoin', function () {
 			await adapter.connect(user).addLiquidity(parseUnits(amount, 6), 0n);
 			expect(await usdc.balanceOf(user)).to.be.equal(0);
 			expect(await pool.balanceOf(user)).to.be.greaterThan(0);
-			console.log(await pool.get_balances());
-		});
-
-		it('should make a few trades as curator', async function () {
-			await usdc.connect(usdcUser).transfer(curator, parseUnits('1000', 6));
-
-			for (let i = 0; i < 10; i++) {
-				const gotUsdc = await usdc.balanceOf(curator);
-				await usdc.connect(curator).approve(await pool.getAddress(), gotUsdc);
-				await pool.connect(curator)['exchange(int128,int128,uint256,uint256)'](1n, 0n, gotUsdc, 0n);
-				const gotStable = await stable.balanceOf(curator);
-				await stable.connect(curator).approve(await pool.getAddress(), gotStable);
-				await pool.connect(curator)['exchange(int128,int128,uint256,uint256)'](0n, 1n, gotStable, 0n);
-			}
-			console.log(await pool.get_balances());
 		});
 
 		it('should create imbalance', async function () {
@@ -99,7 +97,6 @@ describe('Deploy Stablecoin', function () {
 
 			await stable.connect(curator).approve(await pool.getAddress(), parseUnits(amount, 18));
 			await pool.connect(curator)['exchange(int128,int128,uint256,uint256)'](0n, 1n, parseUnits(amount, 18), 0n);
-			console.log(await pool.get_balances());
 		});
 
 		it('Let e.g. curator build up liquidity: ' + amount, async function () {
@@ -111,35 +108,49 @@ describe('Deploy Stablecoin', function () {
 			await usdc.connect(curator).approve(await pool.getAddress(), parseUnits(amount, 6));
 
 			await pool.connect(curator)['add_liquidity(uint256[],uint256)']([parseUnits(amount, 18), parseUnits(amount, 6)], 0);
-			console.log(await pool.get_balances());
+		});
+
+		it('should revert due to NotProfitable', async function () {
+			const gotPool = ((await pool.balanceOf(user)) * 2n) / 8n;
+			await pool.connect(user).approve(await adapter.getAddress(), gotPool);
+			await expect(adapter.connect(user).removeLiquidity(gotPool, 0n)).to.be.revertedWithCustomError(adapter, 'NotProfitable');
+		});
+
+		it('should make a few trades as curator', async function () {
+			await usdc.connect(usdcUser).transfer(curator, parseUnits('100', 6));
+
+			for (let i = 0; i < 10; i++) {
+				const gotUsdc = await usdc.balanceOf(curator);
+				await usdc.connect(curator).approve(await pool.getAddress(), gotUsdc);
+				await pool.connect(curator)['exchange(int128,int128,uint256,uint256)'](1n, 0n, gotUsdc, 0n);
+				const gotStable = await stable.balanceOf(curator);
+				await stable.connect(curator).approve(await pool.getAddress(), gotStable);
+				await pool.connect(curator)['exchange(int128,int128,uint256,uint256)'](0n, 1n, gotStable, 0n);
+			}
 		});
 
 		it('should call redeemLiquidity as user', async function () {
-			console.log({
-				userUSDC: await usdc.balanceOf(user),
-				userUSDU: await stable.balanceOf(user),
-				userPool: await pool.balanceOf(user),
-				adapterMinted: await adapter.totalMinted(),
-				adapterUSDC: await usdc.balanceOf(adapter),
-				adapterUSDU: await stable.balanceOf(adapter),
-				adapterPool: await pool.balanceOf(adapter),
-			});
-
 			const gotPool = ((await pool.balanceOf(user)) * 2n) / 8n;
 			await pool.connect(user).approve(await adapter.getAddress(), gotPool);
 
 			expect(await pool.balanceOf(user)).to.be.greaterThan(0);
 			await adapter.connect(user).removeLiquidity(gotPool, 0n);
-			console.log({
-				userUSDC: await usdc.balanceOf(user),
-				userUSDU: await stable.balanceOf(user),
-				userPool: await pool.balanceOf(user),
-				adapterMinted: await adapter.totalMinted(),
-				adapterUSDC: await usdc.balanceOf(adapter),
-				adapterUSDU: await stable.balanceOf(adapter),
-				adapterPool: await pool.balanceOf(adapter),
-			});
-			console.log(await pool.get_balances());
+		});
+
+		it('should revert due to ImbalancedVariant(true)', async function () {
+			await usdc.connect(usdcUser).transfer(user, parseUnits(amount, 6));
+			await usdc.connect(user).approve(await adapter.getAddress(), parseUnits(amount, 6));
+			await expect(adapter.connect(user).addLiquidity(parseUnits(amount, 6), 0n)).to.be.revertedWithCustomError(
+				adapter,
+				'ImbalancedVariant'
+			);
+		});
+
+		it('should redeem all adapter lp shares', async function () {
+			await adapter.connect(curator).redeem(await pool.balanceOf(await adapter.getAddress()), 0n);
+			expect(await usdc.balanceOf(adapter)).to.be.equal(0);
+			expect(await stable.balanceOf(adapter)).to.be.greaterThan(0);
+			await showDetails();
 		});
 	});
 });
