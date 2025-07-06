@@ -181,7 +181,7 @@ contract CurveAdapterV1 is Context {
 		// provide liquidity
 		uint256 shares = pool.add_liquidity(amounts, minShares * 2);
 
-		// verify imbalance
+		// verify imbalance for stable
 		verifyImbalance(true);
 
 		// return sender's split of shares
@@ -195,16 +195,14 @@ contract CurveAdapterV1 is Context {
 
 	// ---------------------------------------------------------------------------------------
 
-	function checkProfitability(uint256 beforeLP, uint256 afterLP, uint256 split) public view returns (bool) {
-		if (1 ether - ((afterLP * 1 ether) / beforeLP) <= (split * 1 ether) / totalMinted) {
-			return true;
+	function calcProfitability(uint256 beforeLP, uint256 afterLP, uint256 split) public view returns (uint256) {
+		// @dev: if all debt is already paid, `calcBeforeSplit` will be 0 and therefore profit is the whole `split`
+		uint256 calcBeforeSplit = ((1 ether - ((afterLP * 1 ether) / beforeLP)) * totalMinted) / 1 ether;
+		if (split > calcBeforeSplit) {
+			return split - calcBeforeSplit;
 		} else {
-			return false;
+			return 0;
 		}
-	}
-
-	function verifyProfitability(uint256 beforeLP, uint256 afterLP, uint256 split) public view {
-		if (checkProfitability(beforeLP, afterLP, split) == false) revert NotProfitable();
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -216,23 +214,37 @@ contract CurveAdapterV1 is Context {
 		// transfer LP shares from sender, needs approval
 		pool.transferFrom(_msgSender(), address(this), shares);
 
-		// remove both amount of the shares
-		uint256 amount = pool.remove_liquidity_one_coin(shares * 2, int128(int256(idxS)), minAmount * 2);
+		// remove both shares and get split
+		uint256 split = pool.remove_liquidity_one_coin(shares * 2, int128(int256(idxS)), minAmount * 2) / 2;
 
-		// verify imbalance
+		// verify imbalance for coin
 		verifyImbalance(false);
 
 		// verify if in profit
 		uint256 afterLP = pool.balanceOf(address(this));
-		uint256 split = amount / 2;
-		verifyProfitability(beforeLP, afterLP, split);
+		uint256 profit = calcProfitability(beforeLP, afterLP, split);
+		if (profit == 0) revert NotProfitable();
 
-		// reconcile
-		uint256 bal = stable.balanceOf(address(this)) - split;
-		uint256 toBurn = _reconcile(bal);
+		// reduce debt, if available
+		uint256 toBurn = split - profit; // might be 0 if all debt is covered
+		if (toBurn != 0) {
+			if (totalMinted >= toBurn) {
+				stable.burn(toBurn);
+				totalMinted -= toBurn;
+			} else {
+				// fallback, might never be reached
+				stable.burn(totalMinted);
+				totalMinted = 0;
+			}
+		}
 
 		// transfer split to sender
 		stable.transfer(_msgSender(), split);
+
+		// distribute profits
+		totalRevenue += profit;
+		emit Revenue(profit, totalRevenue, totalMinted);
+		_distribute(profit);
 
 		// emit event and return share portion
 		emit RemoveLiquidity(_msgSender(), toBurn, totalMinted, shares, afterLP);
@@ -242,18 +254,42 @@ contract CurveAdapterV1 is Context {
 	// ---------------------------------------------------------------------------------------
 	// redeem, onlyCurator
 
-	function redeem(uint256 shares, uint256 minAmount) external {
-		stable.verifyCurator(_msgSender());
+	function redeem(uint256 shares, uint256 minAmount) external onlyCurator {
 		pool.remove_liquidity_one_coin(shares, int128(int256(idxS)), minAmount);
+		uint256 amount = stable.balanceOf(address(this));
+
+		if (totalMinted <= amount) {
+			// in profit or neutral
+			stable.burn(totalMinted);
+			totalMinted = 0;
+
+			// distribute
+			uint256 dist = amount - totalMinted;
+			if (dist != 0) {
+				_distribute(dist);
+			}
+		} else {
+			// fallback, burn existing totalMinted if available,
+			// will leave with dust debt
+			stable.burn(totalMinted);
+			totalMinted = 0;
+		}
 	}
 
 	// ---------------------------------------------------------------------------------------
 
-	function _reconcile(uint256 amount) internal returns (uint256) {
-		uint256 toBurn = totalMinted >= amount ? amount : totalMinted;
+	function payOffDebt() external onlyCuratorOrGuardian {
+		uint256 bal = stable.balanceOf(address(this));
+
+		// pay of max possible
+		uint256 toBurn = totalMinted >= bal ? bal : totalMinted;
 		stable.burn(toBurn);
 		totalMinted -= toBurn;
-		return toBurn;
+
+		// distribute, if available
+		if (bal > totalMinted) {
+			_distribute(bal - totalMinted);
+		}
 	}
 
 	// ---------------------------------------------------------------------------------------
