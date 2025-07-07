@@ -224,30 +224,19 @@ contract CurveAdapterV1 is Context {
 		uint256 afterLP = pool.balanceOf(address(this));
 		uint256 profit = calcProfitability(beforeLP, afterLP, split);
 		if (profit == 0) revert NotProfitable();
-
-		// reduce debt, if available
-		uint256 toBurn = split - profit; // might be 0 if all debt is covered
-		if (toBurn != 0) {
-			if (totalMinted >= toBurn) {
-				stable.burn(toBurn);
-				totalMinted -= toBurn;
-			} else {
-				// fallback, might never be reached
-				stable.burn(totalMinted);
-				totalMinted = 0;
-			}
-		}
+		totalRevenue += profit;
 
 		// transfer split to sender
 		stable.transfer(_msgSender(), split);
 
+		// reconcile
+		uint256 burned = _reconcile();
+
 		// distribute profits
-		totalRevenue += profit;
 		emit Revenue(profit, totalRevenue, totalMinted);
-		_distribute(profit);
 
 		// emit event and return share portion
-		emit RemoveLiquidity(_msgSender(), toBurn, totalMinted, shares, afterLP);
+		emit RemoveLiquidity(_msgSender(), burned, totalMinted, shares, afterLP);
 		return split;
 	}
 
@@ -256,43 +245,42 @@ contract CurveAdapterV1 is Context {
 
 	function redeem(uint256 shares, uint256 minAmount) external onlyCurator {
 		pool.remove_liquidity_one_coin(shares, int128(int256(idxS)), minAmount);
-		uint256 amount = stable.balanceOf(address(this));
-
-		if (totalMinted <= amount) {
-			// in profit or neutral
-			stable.burn(totalMinted);
-			totalMinted = 0;
-
-			// distribute
-			uint256 dist = amount - totalMinted;
-			if (dist != 0) {
-				_distribute(dist);
-			}
-		} else {
-			// fallback, burn existing totalMinted if available,
-			// will leave with dust debt
-			stable.burn(totalMinted);
-			totalMinted = 0;
-		}
+		_reconcile();
 	}
 
 	// ---------------------------------------------------------------------------------------
 
 	function payOffDebt() external onlyCuratorOrGuardian {
-		uint256 bal = stable.balanceOf(address(this));
-
-		// pay of max possible
-		uint256 toBurn = totalMinted >= bal ? bal : totalMinted;
-		stable.burn(toBurn);
-		totalMinted -= toBurn;
-
-		// distribute, if available
-		if (bal > totalMinted) {
-			_distribute(bal - totalMinted);
-		}
+		_reconcile();
 	}
 
 	// ---------------------------------------------------------------------------------------
+
+	function _reconcile() internal returns (uint256) {
+		uint256 amount = stable.balanceOf(address(this));
+		if (totalMinted <= amount) {
+			// in profit or neutral
+			uint256 dist = amount - totalMinted;
+
+			if (totalMinted != 0) {
+				stable.burn(totalMinted);
+				totalMinted = 0;
+			}
+
+			// distribute
+			if (dist != 0) {
+				_distribute(dist);
+			}
+
+			return totalMinted;
+		} else {
+			// fallback, burn existing totalMinted if available,
+			// will leave with dust debt
+			stable.burn(amount);
+			totalMinted -= amount;
+			return amount;
+		}
+	}
 
 	function _distribute(uint256 amount) internal {
 		for (uint256 i = 0; i < 5; i++) {

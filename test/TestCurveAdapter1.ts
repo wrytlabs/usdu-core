@@ -3,7 +3,7 @@ import { ethers, network } from 'hardhat';
 import { CurveAdapterV1, ICurveStableSwapNG, IERC20, Stablecoin } from '../typechain';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { evm_increaseTime } from './helper';
-import { parseEther, parseUnits } from 'viem';
+import { parseEther, parseUnits, zeroAddress } from 'viem';
 import { ADDRESS } from '../exports/address.config';
 import { mainnet } from 'viem/chains';
 
@@ -19,6 +19,9 @@ describe('CurveAdapterV1: Stablecoin Integration Tests', function () {
 	let module: SignerWithAddress;
 	let user: SignerWithAddress;
 	let usdcUser: SignerWithAddress;
+
+	let rec0: SignerWithAddress;
+	let rec1: SignerWithAddress;
 
 	const USDC_TOKEN = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 	const USDC_HOLDER = '0x55fe002aeff02f77364de339a1292923a15844b8';
@@ -41,7 +44,7 @@ describe('CurveAdapterV1: Stablecoin Integration Tests', function () {
 	};
 
 	before(async function () {
-		[module, user] = await ethers.getSigners();
+		[module, user, rec0, rec1] = await ethers.getSigners();
 
 		// Impersonate USDC whale and curator
 		await network.provider.request({ method: 'hardhat_impersonateAccount', params: [USDC_HOLDER] });
@@ -69,6 +72,14 @@ describe('CurveAdapterV1: Stablecoin Integration Tests', function () {
 		await evm_increaseTime(7 * 24 * 3600 + 100); // Simulate module acceptance delay
 		await stable.acceptModule(module);
 		await stable.acceptModule(adapter);
+	});
+
+	describe('Distribution Setup', () => {
+		it('should set and apply distribution', async () => {
+			await adapter
+				.connect(curator)
+				.setDistribution([rec0, rec1, zeroAddress, zeroAddress, zeroAddress], [800000n, 200000n, 0n, 0n, 0n]);
+		});
 	});
 
 	describe('Pool Imbalance Tests', function () {
@@ -150,11 +161,13 @@ describe('CurveAdapterV1: Stablecoin Integration Tests', function () {
 		});
 
 		it('Curator redeems remaining LP in adapter', async function () {
+			await showDetails();
 			const remainingLP = await pool.balanceOf(adapter);
 			await adapter.connect(curator).redeem(remainingLP, 0n);
 
+			await showDetails();
 			expect(await usdc.balanceOf(adapter)).to.equal(0);
-			expect(await stable.balanceOf(adapter)).to.be.gt(0);
+			expect(await stable.balanceOf(adapter)).to.be.equal(0);
 		});
 	});
 });
