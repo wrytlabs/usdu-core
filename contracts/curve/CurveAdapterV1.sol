@@ -232,7 +232,7 @@ contract CurveAdapterV1 is Context {
 		// reconcile
 		uint256 burned = _reconcile();
 
-		// distribute profits
+		// emit revenue with reduced totalMinted
 		emit Revenue(profit, totalRevenue, totalMinted);
 
 		// emit event and return share portion

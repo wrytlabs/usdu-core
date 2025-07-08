@@ -49,6 +49,9 @@ export type ChainAddressMainnet = {
 
 	// curve pools
 	curveStableSwapNG_USDUUSDC: Address;
+
+	// erc20 tokens
+	usdc: Address;
 };
 
 export type ChainAddressPolygon = {

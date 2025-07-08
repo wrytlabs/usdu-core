@@ -38,6 +38,9 @@ export const ADDRESS: ChainAddressMap = {
 		// curve pools
 		curveStableSwapNG_USDUUSDC: '0x771c91e699B4B23420de3F81dE2aA38C4041632b',
 		// https://www.curve.finance/dex/ethereum/pools/factory-stable-ng-506
+
+		// erc20 tokens
+		usdc: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
 	},
 	[polygon.id]: {
 		// identifier
