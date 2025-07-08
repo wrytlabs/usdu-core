@@ -50,6 +50,9 @@ export type ChainAddressMainnet = {
 	// curve pools
 	curveStableSwapNG_USDUUSDC: Address;
 
+	// curve adapter
+	curveAdapterV1_USDC: Address;
+
 	// erc20 tokens
 	usdc: Address;
 };
