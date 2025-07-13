@@ -49,6 +49,8 @@ export type ChainAddressMainnet = {
 
 	// curve pools
 	curveStableSwapNG_USDUUSDC: Address;
+	curveStableSwapNG_USDUUSDC_LP_PriceAdapter: Address;
+	curveStableSwapNG_USDUUSDC_LP_PriceOracle: Address;
 
 	// curve adapter
 	curveAdapterV1_USDC: Address;

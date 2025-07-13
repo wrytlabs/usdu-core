@@ -36,8 +36,10 @@ export const ADDRESS: ChainAddressMap = {
 		marketIdUSDCSUSDU: '0xAC3DB6E1B107B3239C6356F7018058BA66DFC8BB9D619F90A567CA58D33FFA36',
 
 		// curve pools
-		curveStableSwapNG_USDUUSDC: '0x771c91e699B4B23420de3F81dE2aA38C4041632b',
 		// https://www.curve.finance/dex/ethereum/pools/factory-stable-ng-506
+		curveStableSwapNG_USDUUSDC: '0x771c91e699B4B23420de3F81dE2aA38C4041632b',
+		curveStableSwapNG_USDUUSDC_LP_PriceAdapter: '0xe0fd8C8E137daf400cD00ff9b461d60FB3C92F8A',
+		curveStableSwapNG_USDUUSDC_LP_PriceOracle: '0x3544BdF11EE46261e4a7823D9100B4F66B0450B4',
 
 		// curve adapter
 		curveAdapterV1_USDC: '0x6f05782a28cDa7f01B054b014cF6cd92023937e4',
