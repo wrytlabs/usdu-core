@@ -83,23 +83,22 @@ abstract contract RewardDistributionV1 is IStablecoinModifier {
 
 	// ---------------------------------------------------------------------------------------
 
-	function _distribute(uint256 amount) internal {
+	function _distribute() internal {
+		// distribution is not available
+		if (totalWeights == 0) return;
+
+		// distribute all stables
+		uint256 amount = stable.balanceOf(address(this));
+
 		for (uint256 i = 0; i < 5; i++) {
 			address receiver = receivers[i];
 			uint256 weight = weights[i];
-			uint256 split;
 
 			// end distribution
 			if (receiver == address(0)) return;
 
-			// last item reached (index: 5 - 1 = 4) OR next receiver is zeroAddress
-			if (i == 4 || (i < 4 && receivers[i + 1] == address(0))) {
-				// distribute remainings, eliminating rounding or deposit issues
-				split = stable.balanceOf(address(this));
-			} else {
-				// distribute weighted split
-				split = (weight * amount) / totalWeights;
-			}
+			// distribute weighted split
+			uint256 split = (weight * amount) / totalWeights;
 
 			// distribute revenue split
 			stable.transfer(receiver, split);
