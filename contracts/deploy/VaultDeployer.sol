@@ -10,7 +10,7 @@ import {IMetaMorphoV1_1} from '../morpho/helpers/IMetaMorphoV1_1.sol';
 import {IMetaMorphoV1_1Factory} from '../morpho/helpers/IMetaMorphoV1_1Factory.sol';
 
 import {MorphoAdapterV1} from '../morpho/MorphoAdapterV1.sol';
-import {RewardRouterV0} from '../morpho/RewardRouterV0.sol';
+import {RewardRouterV0} from '../reward/RewardRouterV0.sol';
 
 contract VaultDeployer {
 	IMetaMorphoV1_1Factory public immutable vaultFactory;
