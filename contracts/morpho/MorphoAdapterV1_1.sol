@@ -168,12 +168,10 @@ contract MorphoAdapterV1_1 is Context {
 		// reconcile, triggers `_accruedFeeAndAssets` in vault
 		_reconcile(totalAssets(), true);
 
-		// approve staked shares for redeem from staked vault
-		staked.forceApprove(address(staked), sharesStaked);
+		// redeem staked shares from staked vault
 		uint256 sharesCore = staked.redeem(sharesStaked, address(this), address(this));
 
-		// approve core shares for redeem from core vault
-		core.forceApprove(address(core), sharesCore);
+		// redeem core shares from core vault
 		uint256 amount = core.redeem(sharesCore, address(this), address(this));
 
 		// reduce minted amount
