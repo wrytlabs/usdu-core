@@ -42,6 +42,7 @@ export type ChainAddressMainnet = {
 	marketIdUSDUIdle: Address;
 	marketIdUSDUUSDC: Address;
 	marketIdUSDUWETH: Address;
+	marketIdUSDUCBBTC: Address;
 
 	// cross market ids
 	marketIdUSDCUSDU: Address;
@@ -57,6 +58,8 @@ export type ChainAddressMainnet = {
 
 	// erc20 tokens
 	usdc: Address;
+	WETH: Address;
+	cbBTC: Address;
 };
 
 export type ChainAddressPolygon = {
