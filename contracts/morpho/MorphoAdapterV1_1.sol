@@ -99,10 +99,7 @@ contract MorphoAdapterV1_1 is RewardDistributionV1 {
 			}
 
 			// fallback, distribute remaining balance
-			uint256 bal = stable.balanceOf(address(this));
-			if (bal > 0) {
-				_distribute(bal);
-			}
+			_distribute();
 		}
 
 		emit Redeem(amount, sharesCore, sharesStaked, totalMinted);
@@ -116,14 +113,18 @@ contract MorphoAdapterV1_1 is RewardDistributionV1 {
 
 	function _reconcile(uint256 assets, bool allowPassing) internal returns (uint256) {
 		if (assets > totalMinted) {
+			// calc revenue
 			uint256 mintToReconcile = assets - totalMinted;
 			totalRevenue += mintToReconcile;
 
+			// mint revenue to reconcile
 			stable.mintModule(address(this), mintToReconcile);
 			totalMinted += mintToReconcile;
 			emit Revenue(mintToReconcile, totalRevenue, totalMinted);
 
-			_distribute(mintToReconcile);
+			// distribute balance
+			_distribute();
+
 			return mintToReconcile;
 		} else {
 			if (allowPassing) {

@@ -84,11 +84,11 @@ abstract contract RewardDistributionV1 is IStablecoinModifier {
 	// ---------------------------------------------------------------------------------------
 
 	function _distribute() internal {
-		// distribution is not available
-		if (totalWeights == 0) return;
-
 		// distribute all stables
 		uint256 amount = stable.balanceOf(address(this));
+
+		// distribution is not available
+		if (totalWeights == 0 || amount == 0) return;
 
 		for (uint256 i = 0; i < 5; i++) {
 			address receiver = receivers[i];
