@@ -52,8 +52,8 @@ contract CurveAdapterV1_1 is RewardDistributionV1 {
 	) RewardDistributionV1(Stablecoin(_pool.coins(_idxS)), _receivers, _weights) {
 		pool = _pool;
 
-		require(_idxS < 8, 'idxS out of bounds for max 8 tokens');
-		require(_idxC < 8, 'idxC out of bounds for max 8 tokens');
+		require(_idxS < 2, 'idxS out of bounds for max 2 tokens');
+		require(_idxC < 2, 'idxC out of bounds for max 2 tokens');
 
 		idxS = _idxS;
 		idxC = _idxC;
