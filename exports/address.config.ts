@@ -23,8 +23,9 @@ export const ADDRESS: ChainAddressMap = {
 		usduStable: '0xdde3ec717f220fc6a29d6a4be73f91da5b718e55',
 		usduCoreVault: '0xce22b5fb17ccbc0c5d87dc2e0df47dd71e3adc0a',
 		usduStakedVault: '0x0b5281e1fa7fc7c1f0890f311d5f04d55c0fd63c',
-		usduRewardRouterV0: '0xFA6d71ED122a7b3b494116317C2aC3B4E5269339', // <-- new deployment
-		usduMorphoAdapterV1: '0x6D6525D8e234D840b2699f7107f14fa0D6C62c42',
+		usduRewardRouterV0: '0xFA6d71ED122a7b3b494116317C2aC3B4E5269339', // deprecated
+		usduMorphoAdapterV1: '0x6D6525D8e234D840b2699f7107f14fa0D6C62c42', // set to expire
+		usduCurveAdapterV1_USDC: '0x6f05782a28cDa7f01B054b014cF6cd92023937e4', // set to expire
 
 		// core vault market ids
 		marketIdUSDUIdle: '0x0F2C33F9074109B75B88617534E6AC6DFA8EBF97270C716782221A27CBF0D880',
@@ -41,9 +42,6 @@ export const ADDRESS: ChainAddressMap = {
 		curveStableSwapNG_USDUUSDC: '0x771c91e699B4B23420de3F81dE2aA38C4041632b',
 		curveStableSwapNG_USDUUSDC_LP_PriceAdapter: '0xe0fd8C8E137daf400cD00ff9b461d60FB3C92F8A',
 		curveStableSwapNG_USDUUSDC_LP_PriceOracle: '0x3544BdF11EE46261e4a7823D9100B4F66B0450B4',
-
-		// curve adapter
-		curveAdapterV1_USDC: '0x6f05782a28cDa7f01B054b014cF6cd92023937e4',
 
 		// erc20 tokens
 		usdc: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',

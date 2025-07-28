@@ -37,6 +37,7 @@ export type ChainAddressMainnet = {
 	usduStakedVault: Address;
 	usduRewardRouterV0: Address;
 	usduMorphoAdapterV1: Address;
+	usduCurveAdapterV1_USDC: Address;
 
 	// core vault market ids
 	marketIdUSDUIdle: Address;
@@ -52,9 +53,6 @@ export type ChainAddressMainnet = {
 	curveStableSwapNG_USDUUSDC: Address;
 	curveStableSwapNG_USDUUSDC_LP_PriceAdapter: Address;
 	curveStableSwapNG_USDUUSDC_LP_PriceOracle: Address;
-
-	// curve adapter
-	curveAdapterV1_USDC: Address;
 
 	// erc20 tokens
 	usdc: Address;
