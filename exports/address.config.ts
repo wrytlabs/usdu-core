@@ -25,7 +25,9 @@ export const ADDRESS: ChainAddressMap = {
 		usduStakedVault: '0x0b5281e1fa7fc7c1f0890f311d5f04d55c0fd63c',
 		usduRewardRouterV0: '0xFA6d71ED122a7b3b494116317C2aC3B4E5269339', // deprecated
 		usduMorphoAdapterV1: '0x6D6525D8e234D840b2699f7107f14fa0D6C62c42', // set to expire
+		usduMorphoAdapterV1_1: '0xab6523Cd7fa669EC35Bd5358dF505382b810CDB5',
 		usduCurveAdapterV1_USDC: '0x6f05782a28cDa7f01B054b014cF6cd92023937e4', // set to expire
+		usduCurveAdapterV1_1_USDC: '0x77eBb1D7a7f5371a61b7D21D7734b6dDE6F0f94F',
 
 		// core vault market ids
 		marketIdUSDUIdle: '0x0F2C33F9074109B75B88617534E6AC6DFA8EBF97270C716782221A27CBF0D880',

@@ -37,7 +37,9 @@ export type ChainAddressMainnet = {
 	usduStakedVault: Address;
 	usduRewardRouterV0: Address;
 	usduMorphoAdapterV1: Address;
+	usduMorphoAdapterV1_1: Address;
 	usduCurveAdapterV1_USDC: Address;
+	usduCurveAdapterV1_1_USDC: Address;
 
 	// core vault market ids
 	marketIdUSDUIdle: Address;
