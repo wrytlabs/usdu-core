@@ -60,8 +60,8 @@ abstract contract RewardDistributionV1 is IStablecoinModifier {
 		totalWeights = 0;
 
 		// update total weight
-		for (uint32 i = 0; i < _receivers.length; i++) {
-			if (receivers[i] == address(0)) continue;
+		for (uint32 i = 0; i < 5; i++) {
+			if (_receivers[i] == address(0)) continue;
 			totalWeights += _weights[i];
 		}
 
