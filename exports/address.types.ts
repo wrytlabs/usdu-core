@@ -46,6 +46,7 @@ export type ChainAddressMainnet = {
 	marketIdUSDUUSDC: Address;
 	marketIdUSDUWETH: Address;
 	marketIdUSDUCBBTC: Address;
+	marketIdUSDUCurveLPUSDC: Address;
 
 	// cross market ids
 	marketIdUSDCUSDU: Address;
