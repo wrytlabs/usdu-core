@@ -38,6 +38,7 @@ export type ChainAddressMainnet = {
 	usduRewardRouterV0: Address;
 	usduMorphoAdapterV1: Address;
 	usduMorphoAdapterV1_1: Address;
+	usduMorphoAdapterV1_2: Address;
 	usduCurveAdapterV1_USDC: Address;
 	usduCurveAdapterV1_1_USDC: Address;
 

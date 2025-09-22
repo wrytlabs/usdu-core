@@ -7,7 +7,7 @@ import {
 	IMorpho,
 	TestToken,
 	MorphoAdapterV1,
-	RewardRouterV1,
+	RewardRouterV0,
 	Stablecoin,
 	VaultDeployer,
 } from '../typechain';
@@ -35,7 +35,7 @@ describe('Deploy Stablecoin', function () {
 	let core: IMetaMorphoV1_1;
 	let staked: IMetaMorphoV1_1;
 	let adapter: MorphoAdapterV1;
-	let reward: RewardRouterV1;
+	let reward: RewardRouterV0;
 
 	let curator: SignerWithAddress;
 	let user: SignerWithAddress;
@@ -84,7 +84,7 @@ describe('Deploy Stablecoin', function () {
 		staked = await ethers.getContractAt('IMetaMorphoV1_1', await vaultDeployer.staked());
 
 		adapter = await ethers.getContractAt('MorphoAdapterV1', await vaultDeployer.adapter());
-		reward = await ethers.getContractAt('RewardRouterV1', await vaultDeployer.reward());
+		reward = await ethers.getContractAt('RewardRouterV0', await vaultDeployer.reward());
 
 		await stable.acceptCurator();
 		await core.acceptOwnership();
