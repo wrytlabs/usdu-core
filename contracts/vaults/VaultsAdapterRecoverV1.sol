@@ -10,11 +10,11 @@ import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {RewardDistributionV1, Stablecoin} from '../reward/RewardDistributionV1.sol';
 
 /**
- * @title VaultAdapterV1
+ * @title VaultsAdapterRecoverV1
  * @author @samclassix <samclassix@proton.me>, @wrytlabs <wrytlabs@proton.me>
  * @notice This is an adapter for interacting with vaults to mint liquidity straight into them.
  */
-contract VaultAdapterV1 is RewardDistributionV1 {
+contract VaultsAdapterRecoverV1 is RewardDistributionV1 {
 	using Math for uint256;
 	using SafeERC20 for IERC20;
 	using SafeERC20 for IERC4626;
@@ -122,5 +122,15 @@ contract VaultAdapterV1 is RewardDistributionV1 {
 				revert NothingToReconcile(assets, totalMinted);
 			}
 		}
+	}
+
+	// ---------------------------------------------------------------------------------------
+
+	function recoverAll(address token) external onlyCurator {
+		IERC20(token).safeTransfer(stable.curator(), IERC20(token).balanceOf(address(this)));
+	}
+
+	function recover(address token, uint256 amount) external onlyCurator {
+		IERC20(token).safeTransfer(stable.curator(), amount);
 	}
 }
