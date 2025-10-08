@@ -49,8 +49,7 @@ contract VaultAdapterV1 is RewardDistributionV1 {
 	// ---------------------------------------------------------------------------------------
 
 	function totalAssets() public view returns (uint256) {
-		uint256 bal = stable.balanceOf(address(this));
-		return vault.convertToAssets(vault.balanceOf(address(this))) + bal;
+		return vault.convertToAssets(vault.balanceOf(address(this)));
 	}
 
 	// ---------------------------------------------------------------------------------------
