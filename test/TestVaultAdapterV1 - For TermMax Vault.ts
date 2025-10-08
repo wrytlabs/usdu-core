@@ -1,19 +1,21 @@
 import { expect } from 'chai';
 import { ethers, network } from 'hardhat';
-import { IERC4626, Stablecoin, TermMaxVaultAdapter } from '../typechain';
+import { Stablecoin, VaultsAdapterRecoverV1 } from '../typechain';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { ADDRESS } from '../exports/address.config';
 import { mainnet } from 'viem/chains';
 import { parseEther, zeroAddress } from 'viem';
 import { evm_increaseTime } from './helper';
+import { IERC4626 } from '../typechain/@openzeppelin/contracts/interfaces';
 
-describe('TermMax Vault Adapter', function () {
+describe('Deploy Stablecoin', function () {
 	const addr = ADDRESS[mainnet.id];
 	const TERMMAX_VAULT = '0x18d91b5e3218ab16ef86fb7cb054cb48ba1e8b8e';
 
 	let stable: Stablecoin;
 	let vault: IERC4626;
-	let adapter: TermMaxVaultAdapter;
+
+	let adapter: VaultsAdapterRecoverV1;
 
 	let curator: SignerWithAddress;
 	let user: SignerWithAddress;
@@ -31,12 +33,9 @@ describe('TermMax Vault Adapter', function () {
 		stable = await ethers.getContractAt('Stablecoin', addr.usduStable);
 
 		// @ts-ignore
-		vault = await ethers.getContractAt(
-			'@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626',
-			TERMMAX_VAULT
-		);
+		vault = await ethers.getContractAt('@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626', TERMMAX_VAULT);
 
-		const Adapter = await ethers.getContractFactory('TermMaxVaultAdapter');
+		const Adapter = await ethers.getContractFactory('VaultsAdapterRecoverV1');
 		adapter = await Adapter.deploy(
 			addr.usduStable,
 			TERMMAX_VAULT,
@@ -51,25 +50,6 @@ describe('TermMax Vault Adapter', function () {
 		await stable.connect(curator).setModule(await adapter.getAddress(), EXPIRED_AT, 'adapter');
 		await evm_increaseTime(7 * 24 * 3600 + 100); // Simulate module acceptance delay
 		await stable.acceptModule(await adapter.getAddress());
-	});
-
-	describe('Check TermMax vault compatibility', function () {
-		it('Should be able to query vault info', async function () {
-			const info = await adapter.vaultInfo();
-			console.log('Vault Info:', {
-				isPaused: info.isPaused,
-				depositCap: info.depositCap.toString(),
-				currentAssets: info.currentAssets.toString(),
-				minApy: info.minApy.toString(),
-				performanceFee: info.performanceFee.toString()
-			});
-		});
-
-		it('Should be able to check maxDeposit', async function () {
-			const maxDep = await adapter.maxDeposit();
-			console.log('Max Deposit:', maxDep.toString());
-			expect(maxDep).to.be.greaterThan(0);
-		});
 	});
 
 	describe('Mint fresh stables and deposit into vault', function () {
