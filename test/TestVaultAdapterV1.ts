@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers, network } from 'hardhat';
-import { Stablecoin, VaultAdapterV1 } from '../typechain';
+import { Stablecoin, VaultsAdapterRecoverV1 } from '../typechain';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { ADDRESS } from '../exports/address.config';
 import { mainnet } from 'viem/chains';
@@ -14,7 +14,7 @@ describe('Deploy Stablecoin', function () {
 	let stable: Stablecoin;
 	let core: IERC4626;
 
-	let adapter: VaultAdapterV1;
+	let adapter: VaultsAdapterRecoverV1;
 
 	let curator: SignerWithAddress;
 	let user: SignerWithAddress;
@@ -34,7 +34,7 @@ describe('Deploy Stablecoin', function () {
 		// @ts-ignore
 		core = await ethers.getContractAt('@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626', addr.usduCoreVault);
 
-		const Adapter = await ethers.getContractFactory('VaultAdapterV1');
+		const Adapter = await ethers.getContractFactory('VaultsAdapterRecoverV1');
 		adapter = await Adapter.deploy(
 			addr.usduStable,
 			addr.usduCoreVault,

@@ -13,28 +13,16 @@ interface ITermMaxVault is IERC4626 {
     event BadDebtDealt(uint256 amount);
     event PendingMinApySubmitted(uint256 newMinApy);
 
-    // Enhanced ERC4626 methods with additional checks
-    function maxDeposit(address owner) external view override returns (uint256);
-    function totalAssets() external view override returns (uint256);
+    // Enhanced ERC4626 methods with additional checks are inherited from IERC4626
 
-    // TermMax-specific methods
-    function createOrder(uint256 amount) external returns (uint256 orderId);
-    function withdrawFts(uint256 amount) external;
-    function dealBadDebt(uint256 amount) external;
-    function submitPendingMinApy(uint256 newMinApy) external;
-
-    // Governance and state
+    // Governance and state functions that actually exist
     function paused() external view returns (bool);
     function curator() external view returns (address);
     function guardian() external view returns (address);
     function owner() external view returns (address);
 
-    // Capacity and limits
-    function depositCap() external view returns (uint256);
+    // Financial parameters that actually exist
+    function apy() external view returns (uint256);
     function minApy() external view returns (uint256);
     function performanceFee() external view returns (uint256);
-
-    // Pool and market management
-    function isPoolWhitelisted(address pool) external view returns (bool);
-    function isMarketWhitelisted(address market) external view returns (bool);
 }
