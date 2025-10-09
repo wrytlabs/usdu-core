@@ -145,7 +145,6 @@ const config: HardhatUserConfig = {
 		},
 	},
 	etherscan: {
-		// apiKey: etherscan,
 		apiKey: {
 			// @ts-ignore
 			mainnet: etherscan,
@@ -153,6 +152,14 @@ const config: HardhatUserConfig = {
 			citrea: 'your API key',
 		},
 		customChains: [
+			{
+				network: 'mainnet',
+				chainId: 1,
+				urls: {
+					apiURL: 'https://api.etherscan.io/v2/api?chainid=1',
+					browserURL: 'https://etherscan.io',
+				},
+			},
 			{
 				network: 'tenderly',
 				chainId: 42069,
@@ -170,9 +177,6 @@ const config: HardhatUserConfig = {
 				},
 			},
 		],
-	},
-	sourcify: {
-		enabled: true,
 	},
 	namedAccounts: {
 		deployer: {
