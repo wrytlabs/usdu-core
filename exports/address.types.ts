@@ -58,6 +58,12 @@ export type ChainAddressMainnet = {
 	curveStableSwapNG_USDUUSDC_LP_PriceAdapter: Address;
 	curveStableSwapNG_USDUUSDC_LP_PriceOracle: Address;
 
+	// term-max vaults
+	termmaxVaultUSDU: Address;
+
+	// term-max adapters
+	termmaxVaultAdapterRecoverV1: Address;
+
 	// erc20 tokens
 	usdc: Address;
 	WETH: Address;
