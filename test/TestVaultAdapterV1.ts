@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers, network } from 'hardhat';
-import { Stablecoin, TermMaxVaultAdapter, VaultsAdapterRecoverV1 } from '../typechain';
+import { Stablecoin, VaultAdapterRecoverV1 } from '../typechain';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { ADDRESS } from '../exports/address.config';
 import { mainnet } from 'viem/chains';
@@ -10,12 +10,11 @@ import { IERC4626 } from '../typechain/@openzeppelin/contracts/interfaces';
 
 describe('Deploy Stablecoin', function () {
 	const addr = ADDRESS[mainnet.id];
-	const TERMMAX_VAULT = '0x18d91b5e3218ab16ef86fb7cb054cb48ba1e8b8e';
 
 	let stable: Stablecoin;
-	let vault: IERC4626;
+	let core: IERC4626;
 
-	let adapter: VaultsAdapterRecoverV1;
+	let adapter: VaultAdapterRecoverV1;
 
 	let curator: SignerWithAddress;
 	let user: SignerWithAddress;
@@ -33,12 +32,12 @@ describe('Deploy Stablecoin', function () {
 		stable = await ethers.getContractAt('Stablecoin', addr.usduStable);
 
 		// @ts-ignore
-		vault = await ethers.getContractAt('@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626', TERMMAX_VAULT);
+		core = await ethers.getContractAt('@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626', addr.usduCoreVault);
 
-		const Adapter = await ethers.getContractFactory('VaultsAdapterRecoverV1');
+		const Adapter = await ethers.getContractFactory('VaultAdapterRecoverV1');
 		adapter = await Adapter.deploy(
 			addr.usduStable,
-			TERMMAX_VAULT,
+			addr.usduCoreVault,
 			[addr.curator, zeroAddress, zeroAddress, zeroAddress, zeroAddress],
 			[1000n, 0, 0, 0, 0]
 		);
@@ -57,8 +56,6 @@ describe('Deploy Stablecoin', function () {
 			await adapter.connect(curator).deposit(parseEther('1000000'));
 		});
 
-		return;
-
 		it('Should correctly update totalMinted in adapter to 1M', async function () {
 			expect(await adapter.totalMinted()).to.be.equal(parseEther('1000000'));
 		});
@@ -67,16 +64,14 @@ describe('Deploy Stablecoin', function () {
 			expect(await adapter.totalAssets()).to.be.approximately(parseEther('1000000'), 1n);
 		});
 
-		it('Should correctly reflect at least 1M as totalAssets in vault', async function () {
-			expect(await vault.totalAssets()).to.be.greaterThanOrEqual(parseEther('1000000'));
+		it('Should correctly reflect at least 1M as totalAssets in core vault', async function () {
+			expect(await core.totalAssets()).to.be.greaterThanOrEqual(parseEther('1000000'));
 		});
 	});
 
-	return;
-
 	describe('Redeem and pay off debt from vault', function () {
 		it('Should correctly call redeem all shares', async function () {
-			const shares = await vault.balanceOf(await adapter.getAddress());
+			const shares = await core.balanceOf(await adapter.getAddress());
 			await adapter.connect(curator).redeem(shares);
 		});
 
@@ -96,11 +91,11 @@ describe('Deploy Stablecoin', function () {
 		});
 
 		it('Should correctly recover all shares', async function () {
-			await adapter.connect(curator).recoverAll(await vault.getAddress());
+			await adapter.connect(curator).recoverAll(await core.getAddress());
 		});
 
 		it('Should redeem all token as "sim" for a swap', async function () {
-			await vault.connect(curator).redeem(await vault.balanceOf(curator.address), await adapter.getAddress(), curator.address);
+			await core.connect(curator).redeem(await core.balanceOf(curator.address), await adapter.getAddress(), curator.address);
 		});
 
 		it('Should correctly receive the stablecoin funds', async function () {
@@ -132,11 +127,11 @@ describe('Deploy Stablecoin', function () {
 		});
 
 		it('Should correctly recover all shares', async function () {
-			await adapter.connect(curator).recoverAll(await vault.getAddress());
+			await adapter.connect(curator).recoverAll(await core.getAddress());
 		});
 
 		it('Should redeem all token as "sim" for a swap', async function () {
-			await vault.connect(curator).redeem(await vault.balanceOf(curator.address), curator.address, curator.address);
+			await core.connect(curator).redeem(await core.balanceOf(curator.address), curator.address, curator.address);
 			await stable.connect(curator).transfer(await adapter.getAddress(), parseEther('800000'));
 
 			console.log({
