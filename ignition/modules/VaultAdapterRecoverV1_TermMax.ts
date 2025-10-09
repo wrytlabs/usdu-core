@@ -6,7 +6,7 @@ import { mainnet } from 'viem/chains';
 
 // config and select
 export const NAME: string = 'VaultAdapterRecoverV1'; // <-- select smart contract
-export const FILE: string = 'VaultAdapterRecoverV1 - TermMax'; // <-- name exported file
+export const FILE: string = 'VaultAdapterRecoverV1_TermMax'; // <-- name exported file
 export const MOD: string = NAME + 'Module';
 console.log(NAME);
 

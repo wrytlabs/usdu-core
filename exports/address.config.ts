@@ -59,7 +59,7 @@ export const ADDRESS: ChainAddressMap = {
 		termmaxVaultUSDU: '0x18d91B5e3218AB16Ef86fB7Cb054CB48bA1e8b8e',
 
 		// term-max adapters
-		termmaxVaultAdapterRecoverV1: '0x18d91B5e3218AB16Ef86fB7Cb054CB48bA1e8b8e', // FIXME: <-- add
+		termmaxVaultAdapterRecoverV1: '0x8F36bbEe57aCB4857CB97898020B529969FDF221',
 
 		// erc20 tokens
 		usdc: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
