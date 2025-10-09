@@ -6,7 +6,8 @@ import {Stablecoin, IERC20, IERC4626, VaultAdapterV1, SafeERC20} from './VaultAd
 /**
  * @title VaultAdapterRecoverV1
  * @author @samclassix <samclassix@proton.me>, @wrytlabs <wrytlabs@proton.me>
- * @notice This is an adapter for interacting with vaults to mint liquidity straight into them.
+ * @notice This contract serves as an adapter for interacting with vaults, facilitating the direct minting of liquidity into them.
+ * @notice It includes a recovery mechanism designed to handle edge cases for collateral as Real-World Assets (RWA), specifically for KYC-approved users during liquidation events.
  */
 contract VaultAdapterRecoverV1 is VaultAdapterV1 {
 	using SafeERC20 for IERC20;
