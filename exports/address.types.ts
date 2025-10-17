@@ -41,6 +41,7 @@ export type ChainAddressMainnet = {
 	usduMorphoAdapterV1_2: Address;
 	usduCurveAdapterV1_USDC: Address;
 	usduCurveAdapterV1_1_USDC: Address;
+	usduCurveAdapterV1_1_USDC_2: Address;
 
 	// core vault market ids
 	marketIdUSDUIdle: Address;
@@ -55,6 +56,7 @@ export type ChainAddressMainnet = {
 
 	// curve pools
 	curveStableSwapNG_USDUUSDC: Address;
+	curveStableSwapNG_USDUUSDC_2: Address;
 	curveStableSwapNG_USDUUSDC_LP_PriceAdapter: Address;
 	curveStableSwapNG_USDUUSDC_LP_PriceOracle: Address;
 

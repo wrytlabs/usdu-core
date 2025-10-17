@@ -51,9 +51,13 @@ export const ADDRESS: ChainAddressMap = {
 		curveStableSwapNG_USDUUSDC_LP_PriceAdapter: '0xe0fd8C8E137daf400cD00ff9b461d60FB3C92F8A',
 		curveStableSwapNG_USDUUSDC_LP_PriceOracle: '0x3544BdF11EE46261e4a7823D9100B4F66B0450B4',
 
+		// https://www.curve.finance/dex/ethereum/pools/factory-stable-ng-596
+		curveStableSwapNG_USDUUSDC_2: '0x6C5Ff8DCe52BE77b4eCE6B51996018f0C1713bA9',
+
 		// curve adapters
 		usduCurveAdapterV1_USDC: '0x6f05782a28cDa7f01B054b014cF6cd92023937e4', // set to expire
 		usduCurveAdapterV1_1_USDC: '0x77eBb1D7a7f5371a61b7D21D7734b6dDE6F0f94F',
+		usduCurveAdapterV1_1_USDC_2: '0x77cBb2f180F55dd2916bfC78F879A2C2dE37f638',
 
 		// term-max vaults
 		termmaxVaultUSDU: '0x18d91B5e3218AB16Ef86fB7Cb054CB48bA1e8b8e',

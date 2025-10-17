@@ -64,7 +64,7 @@ const config: HardhatUserConfig = {
 		hardhat: {
 			forking: {
 				url: `https://eth-mainnet.g.alchemy.com/v2/${alchemy}`,
-				blockNumber: 23538989,
+				blockNumber: 23599470,
 			},
 			gas: 'auto',
 			gasPrice: 'auto',
